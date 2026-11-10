@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "overlay",
+  "description": "Finestre overlay e pannello partita: solo ricezione eventi (stato partita, impostazioni) e log locale. Nessun permesso su finestre, file, shell o URL esterni.",
+  "windows": ["overlay", "board"],
+  "permissions": ["core:event:default", "log:allow-log"]
+}

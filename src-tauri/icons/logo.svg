@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="1024" height="1024">
+  <!-- Same mark as src/components/brand/logo-mark.tsx, with the design tokens
+       of src/index.css resolved to literal colors (icons have no CSS vars). -->
+  <defs>
+    <linearGradient id="g" x1="6" y1="4" x2="44" y2="46" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#a58fff"/>
+      <stop offset="55%" stop-color="#8b6cff"/>
+      <stop offset="100%" stop-color="#42d6d0"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#8b6cff" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#8b6cff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="24" cy="24" r="23" fill="url(#glow)"/>
+  <path d="M24 2.75 42.4 13.4v21.2L24 45.25 5.6 34.6V13.4L24 2.75Z" fill="#8b6cff" fill-opacity="0.08" stroke="url(#g)" stroke-width="1.4"/>
+  <path d="M24 9.4 36.6 16.7v14.6L24 38.6 11.4 31.3V16.7L24 9.4Z" fill="#10121c" stroke="#f3f4fa" stroke-opacity="0.12" stroke-width="1"/>
+  <path d="M17.4 18.2h13.2M24 18.2v13" stroke="url(#g)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  <circle cx="24" cy="18.2" r="2" fill="#42d6d0"/>
+  <circle cx="17.4" cy="18.2" r="1.2" fill="#a58fff"/>
+  <circle cx="30.6" cy="18.2" r="1.2" fill="#a58fff"/>
+</svg>

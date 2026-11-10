@@ -1,0 +1,20 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permessi minimi per la finestra principale: eventi dal backend, log locale e apertura URL. I comandi applicativi non richiedono permessi core aggiuntivi. L'apertura di URL è limitata agli stessi domini dell'allowlist in src/services/external-service.ts.",
+  "windows": ["main"],
+  "permissions": [
+    "core:event:default",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        { "url": "https://developer.riotgames.com" },
+        { "url": "https://developer.riotgames.com/*" },
+        { "url": "https://www.riotgames.com" },
+        { "url": "https://www.riotgames.com/*" },
+        { "url": "https://www.leagueoflegends.com/*" }
+      ]
+    },
+    "log:allow-log"
+  ]
+}

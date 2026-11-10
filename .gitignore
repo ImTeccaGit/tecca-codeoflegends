@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+src-tauri/target/
+src-tauri/gen/
+
+# Environment / secrets — never commit API keys or credentials
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+# Public Riot root CA for the local Live Client Data API (not a secret).
+!src-tauri/certs/riotgames.pem
+
+# Tooling caches
+.vite/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# Editors / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local databases and logs
+*.sqlite
+*.sqlite3
+*.db
+*.log
