@@ -18,7 +18,9 @@ conferma esplicita all'utente prima di violarle.
   Game & Overlay sono operativi; Rune Builder e Build Builder sono scaffold UI
   dichiarati come pianificati.
 - La UI è in italiano. Identificatori di codice, comandi, tipi e API sono in
-  inglese. La documentazione è in italiano.
+  inglese. La documentazione (`README.md` e `docs/`) è in **inglese**, su
+  richiesta dell'utente (10/11/2026), perché il repository pubblico viene
+  letto da Riot; questo file resta in italiano.
 
 ## 2. Regole non negoziabili su dati e trasparenza
 
@@ -180,7 +182,8 @@ src-tauri/
   src/            main, lib, commands, db, models, error
   migrations/     SQL append-only
   capabilities/   permessi Tauri
-docs/             ARCHITECTURE.md, ROADMAP.md
+docs/             ARCHITECTURE, ROADMAP, DATABASE, RIOT_COMPLIANCE,
+                  LIVE_GAME, MATCH_ANALYSIS, USER_GUIDE (in inglese)
 ```
 
 ## 11. Comandi utili

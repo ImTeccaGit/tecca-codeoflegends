@@ -99,8 +99,10 @@ docs/                architecture, database, compliance and feature docs
 
 More detail: [docs/RIOT_COMPLIANCE.md](docs/RIOT_COMPLIANCE.md),
 [docs/LIVE_GAME.md](docs/LIVE_GAME.md),
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (Italian) and the Italian user
-guide [docs/GUIDA.md](docs/GUIDA.md).
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
+[docs/DATABASE.md](docs/DATABASE.md),
+[docs/ROADMAP.md](docs/ROADMAP.md) and the user guide
+[docs/USER_GUIDE.md](docs/USER_GUIDE.md). The app interface is in Italian.
 
 ## Build from source
 
@@ -119,5 +121,5 @@ Checks: `npm run typecheck`, `npm run lint`, `npm test`,
 
 ## License
 
-MIT (see `package.json`). Riot Games data and assets remain property of Riot
-Games, Inc.
+Declared as MIT in `package.json` (a `LICENSE` file has not been added yet).
+Riot Games data and assets remain property of Riot Games, Inc.

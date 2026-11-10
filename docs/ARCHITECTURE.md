@@ -1,109 +1,112 @@
-# Architettura — Tecca CodeOfLegends
+# Architecture — Tecca CodeOfLegends
 
-Documento di riferimento per la struttura tecnica della Fase 1. Descrive solo
-ciò che esiste e funziona, più i punti di estensione previsti.
-
----
-
-## 1. Principi
-
-1. **Separazione rigida dei livelli.** La UI non parla mai direttamente con
-   SQLite o con API esterne.
-2. **Validazione ai confini.** Ogni dato che attraversa il bridge Tauri viene
-   validato con Zod; ogni input esterno viene validato di nuovo in Rust.
-3. **Un solo punto di accesso.** I servizi TypeScript sono l'unico ingresso a
-   `invoke`; Rust è l'unico punto di accesso a filesystem e database.
-4. **Trasparenza.** Nessun fallback silenzioso che simuli successo. Se il
-   backend non c'è, la UI lo dice.
-5. **Migrazioni append-only.** Lo schema evolve aggiungendo file, mai
-   modificando quelli già applicati.
+Reference document for the technical structure. It describes only what exists
+and works, plus the planned extension points.
 
 ---
 
-## 2. Flusso dei dati
+## 1. Principles
+
+1. **Strict layer separation.** The UI never talks directly to SQLite or to
+   external APIs.
+2. **Validation at the boundaries.** Every value crossing the Tauri bridge is
+   validated with Zod; every external input is validated again in Rust.
+3. **A single entry point.** TypeScript services are the only way into
+   `invoke`; Rust is the only access point to the filesystem and the database.
+4. **Transparency.** No silent fallback that pretends to succeed. If the
+   backend is missing, the UI says so.
+5. **Append-only migrations.** The schema evolves by adding files, never by
+   changing applied ones.
+
+---
+
+## 2. Data flow
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ React (feature)                                             │
-│  └─ hook TanStack Query (src/hooks)                         │
-│      └─ servizio TypeScript (src/services)                  │
-│          └─ invokeCommand + schema Zod (src/lib/tauri.ts)   │
+│  └─ TanStack Query hook (src/hooks)                         │
+│      └─ TypeScript service (src/services)                   │
+│          └─ invokeCommand + Zod schema (src/lib/tauri.ts)   │
 └───────────────────────────┬─────────────────────────────────┘
                             │ Tauri IPC
 ┌───────────────────────────▼─────────────────────────────────┐
 │ Rust                                                        │
-│  commands.rs  → validazione e orchestrazione                │
-│  db.rs        → SQLite, migrazioni, activity log            │
-│  models.rs    → contratti serializzati (camelCase)          │
+│  commands.rs  → validation and orchestration                │
+│  db.rs        → SQLite, migrations, activity log            │
+│  models.rs    → serialized contracts (camelCase)            │
 │  error.rs     → AppError { code, message }                  │
 └───────────────────────────┬─────────────────────────────────┘
                             │ rusqlite
 ┌───────────────────────────▼─────────────────────────────────┐
-│ SQLite locale (WAL, foreign_keys ON, tabelle STRICT)        │
+│ Local SQLite (WAL, foreign_keys ON, STRICT tables)          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-Regole pratiche:
+Practical rules:
 
-- Nessun componente importa `@tauri-apps/api/core` direttamente; solo
-  `src/lib/tauri.ts` lo fa.
-- Nessun componente importa `rusqlite` o SQL.
-- TanStack Query possiede lo stato server; Zustand possiede solo stato UI
-  effimero (command palette, drawer mobile).
+- No component imports `@tauri-apps/api/core` directly; only
+  `src/lib/tauri.ts` does.
+- No component imports `rusqlite` or SQL.
+- TanStack Query owns server state; Zustand owns only ephemeral UI state
+  (command palette, mobile drawer).
 
 ---
 
 ## 3. Frontend
 
-### 3.1 Registry dei moduli
+### 3.1 Module registry
 
-`src/app/navigation.ts` è la fonte unica per:
+`src/app/navigation.ts` is the single source for:
 
-- elenco moduli, etichette e descrizioni;
-- gruppo di navigazione;
-- fase e stato (`available`, `in-development`, `planned`);
-- icona e percorso.
+- module list, labels and descriptions;
+- navigation group;
+- phase and status (`available`, `in-development`, `planned`);
+- icon and path.
 
-Sidebar, drawer mobile, command palette, dashboard e pagine di scaffold leggono
-lo stesso registry. Aggiungere un modulo significa aggiungere una voce qui e una
-rotta nel router.
+Sidebar, mobile drawer, command palette, dashboard and scaffold pages read the
+same registry. Adding a module means adding an entry here and a route in the
+router.
 
 ### 3.2 Routing
 
-`src/app/router.tsx` usa `createHashRouter`, scelta deliberata per evitare
-problemi di deep-link nel webview Tauri. Le rotte principali:
+`src/app/router.tsx` uses `createHashRouter`, a deliberate choice to avoid
+deep-link problems in the Tauri webview. Main routes:
 
-| Percorso | Pagina | Stato |
+| Path | Page | Status |
 | --- | --- | --- |
-| `/` | Dashboard | Reale |
-| `/settings` | Settings | Reale |
-| `/champions` | Champions | Scaffold |
-| `/champions/:championId` | Dettaglio campione | Scaffold parametrico |
+| `/` | Dashboard | Real |
+| `/settings` | Settings | Real |
+| `/champions` | Champions | Real (Data Dragon + real lanes) |
+| `/champions/:championId` | Champion detail | Real (Data Dragon + champion statistics) |
 | `/runes` | Rune Builder | Scaffold |
 | `/builds` | Build Builder | Scaffold |
-| `/jungle` | Jungle Routes | Scaffold |
-| `/players` | Player Profiles | Scaffold |
-| `/matches` | Match History | Scaffold |
-| `/analysis` | Match Analysis | Reale (dati match-v5 locali) |
-| `/matchups` | Matchups | Reale (dati match-v5 locali) |
-| `/live` | Live Game & Overlay | Reale (finestra `overlay` separata) |
-| `*` | 404 | Reale |
+| `/jungle` | Jungle Routes | Real (training only) |
+| `/players` | Player Profiles | Real (Riot API) |
+| `/matches` | Match History | Real (Riot API / League client) |
+| `/analysis` | Match Analysis | Real (local match-v5 data) |
+| `/matchups` | Matchups | Real (local match-v5 data) |
+| `/live` | Live Game & Overlay | Real (separate `overlay` and `board` windows) |
+| `*` | 404 | Real |
 
-### 3.3 Shell e accessibilità
+The separate `overlay` and `board` windows load the same bundle and, based on
+their label, render only `OverlayApp` or `BoardApp` (no router, no input).
 
-- Sidebar permanente su desktop (`lg`), drawer Radix su mobile.
-- Skip link verso `#main-content`.
-- Focus visibile globale, ruoli ARIA nelle primitive, navigazione da tastiera.
-- Command palette con `Ctrl+K`, frecce, `Enter` ed `Esc`.
-- Animazioni brevi, disattivate da `prefers-reduced-motion` e dalla preferenza
-  utente (`html[data-reduce-motion="true"]`).
+### 3.3 Shell and accessibility
+
+- Permanent sidebar on desktop (`lg`), Radix drawer on mobile.
+- Skip link to `#main-content`.
+- Global visible focus, ARIA roles in the primitives, keyboard navigation.
+- Command palette with `Ctrl+K`, arrows, `Enter` and `Esc`.
+- Short animations, disabled by `prefers-reduced-motion` and by the user
+  preference (`html[data-reduce-motion="true"]`).
 
 ### 3.4 Design system
 
-Token definiti una sola volta in `src/index.css` e mappati su Tailwind con
+Tokens defined once in `src/index.css` and mapped to Tailwind with
 `@theme inline`:
 
-| Token | Valore |
+| Token | Value |
 | --- | --- |
 | Background | `#10121C` |
 | Surface / Card | `#191B29` |
@@ -112,533 +115,557 @@ Token definiti una sola volta in `src/index.css` e mappati su Tailwind con
 | Foreground | `#F3F4FA` |
 | Muted foreground | `#969AAF` |
 
-Ombre e bagliori sono token anch'essi (`--shadow-card`,
-`--shadow-button-primary`, `--shadow-nav-indicator`, `--shadow-module-hover`,
-`--shadow-hero`, `--drop-shadow-rift-path`, `--drop-shadow-rift-camp`) e
-generano le utility `shadow-*` / `drop-shadow-*`. Sfondi decorativi riusabili
-vivono come utility in `index.css` (`app-backdrop`, `surface-grid`,
-`hero-secondary-glow`, `chart-grid`, `panel-sheen`). Nessun colore (hex o
-`rgba`) è scritto nei componenti.
+Shadows and glows are tokens too (`--shadow-card`, `--shadow-button-primary`,
+`--shadow-nav-indicator`, `--shadow-module-hover`, `--shadow-hero`,
+`--drop-shadow-rift-path`, `--drop-shadow-rift-camp`) and generate the
+`shadow-*` / `drop-shadow-*` utilities. Reusable decorative backgrounds live as
+utilities in `index.css` (`app-backdrop`, `surface-grid`,
+`hero-secondary-glow`, `chart-grid`, `panel-sheen`). No color (hex or `rgba`)
+is written in components.
 
-Le animazioni di ingresso/uscita di Dialog e Tooltip (`animate-in`,
-`fade-in-0`, `zoom-in-95`, …) provengono da `tw-animate-css`, importato in
-`index.css`. Sono soggette alle stesse regole di riduzione del movimento.
+Dialog and Tooltip enter/exit animations (`animate-in`, `fade-in-0`,
+`zoom-in-95`, …) come from `tw-animate-css`, imported in `index.css`. They
+follow the same reduced-motion rules.
 
-### 3.5 Gestione errori
+### 3.5 Error handling
 
-- `AppError` (`src/lib/errors.ts`) normalizza errori backend, di rete e
-  sconosciuti in `{ code, message }`.
-- `src/lib/query-client.ts` registra `QueryCache` e `MutationCache` per mostrare
-  toast globali sugli errori e registrarli nei log locali.
-- `ErrorBoundary` intercetta gli errori di rendering e li scrive nei log
-  tramite `src/services/log-service.ts`.
-- Le feature mostrano stati espliciti di loading, empty, error e success.
+- `AppError` (`src/lib/errors.ts`) normalizes backend, network and unknown
+  errors into `{ code, message }`.
+- `src/lib/query-client.ts` registers `QueryCache` and `MutationCache` to show
+  global toasts on errors and write them to the local logs.
+- `ErrorBoundary` catches rendering errors and writes them to the logs through
+  `src/services/log-service.ts`.
+- Features show explicit loading, empty, error and success states.
 
-### 3.6 Dati competitivi e Modalità DEMO
+### 3.6 Competitive data and DEMO mode
 
-- Contratto: `src/types/dashboard.ts` (Zod). I dati Riot futuri dovranno
-  rispettare gli stessi schemi.
-- Calcoli: `src/lib/match-stats.ts`, funzioni pure. Ogni valore delle card
-  (Win Rate, KDA, medie, campioni, grafico) è derivato dalle partite elencate,
-  mai scritto a mano.
-- Origine: `useDashboardData()` restituisce `null` finché non esiste una fonte
-  reale, e i pannelli mostrano stati vuoti espliciti.
-- **Modalità DEMO**: interruttore in dashboard (`demoMode` in Zustand, solo
-  sessione, spento a ogni avvio). Il dataset `features/dashboard/demo/` ha
-  `source: "demo"`, id `DEMO-xxx`, patch `DEMO`, e ogni pannello mostra
-  `DemoBadge`. Non viene mai salvato né inviato al backend.
-- Il grafico (Recharts) è caricato in lazy: chunk separato dal bundle
-  principale. Una sola serie per volta, un solo asse.
+- Contract: `src/types/dashboard.ts` (Zod).
+- Calculations: `src/lib/match-stats.ts`, pure functions. Every card value
+  (win rate, KDA, averages, champions, chart) is derived from the listed
+  matches, never written by hand.
+- Origin: the main profile (Riot API or League client); without one, panels
+  show explicit empty states.
+- **DEMO mode**: switch in the dashboard (`demoMode` in Zustand, session only,
+  off at every start). The dataset in `features/dashboard/demo/` has
+  `source: "demo"`, ids `DEMO-xxx`, patch `DEMO`, and every panel shows
+  `DemoBadge`. It is never saved or sent to the backend.
+- The chart (Recharts) is lazy-loaded: a chunk separate from the main bundle.
+  One series at a time, one axis.
 
-### 3.7 Anteprima browser
+### 3.7 Browser preview
 
-`getSystemSnapshot()` restituisce uno snapshot marcato `runtime: "browser"`
-quando `window.__TAURI_INTERNALS__` non è presente. Non è un mock di dati di
-gioco: descrive l'assenza del backend e disabilita i salvataggi.
+`getSystemSnapshot()` returns a snapshot marked `runtime: "browser"` when
+`window.__TAURI_INTERNALS__` is not present. It is not a mock of game data: it
+describes the missing backend and disables saving.
 
 ---
 
-## 4. Backend Rust
+## 4. Rust backend
 
-### 4.1 Comandi Tauri
+### 4.1 Tauri commands
 
-| Comando | Input | Output |
+| Command | Input | Output |
 | --- | --- | --- |
 | `get_system_snapshot` | — | `SystemSnapshot` |
 | `update_settings` | `SettingsPatch` | `AppSettings` |
-| `get_champion_catalog` | — | `ChampionCatalog` (patch corrente) |
-| `get_champion_detail` | `key` (id Data Dragon, alfanumerico ≤ 64) | `ChampionDetail \| null` |
+| `get_champion_catalog` | — | `ChampionCatalog` (current patch) |
+| `get_champion_detail` | `key` (Data Dragon id, alphanumeric ≤ 64) | `ChampionDetail \| null` |
 | `get_catalog_status` | — | `CatalogStatus` |
 | `sync_data_dragon` | — | `SyncOutcome` (async) |
 | `set_champion_favorite` | `championId`, `favorite` | `ChampionPreferences` |
-| `set_champion_lanes` | `championId`, `lanes` (≤ 5, valori Riot) | `ChampionPreferences` |
+| `set_champion_lanes` | `championId`, `lanes` (≤ 5, Riot values) | `ChampionPreferences` (no longer used by the UI) |
 | `list_jungle_routes` | — | `CustomRoute[]` |
-| `save_jungle_route` | `RouteInput` (crea o aggiorna) | `CustomRoute` |
+| `save_jungle_route` | `RouteInput` (create or update) | `CustomRoute` |
 | `delete_jungle_route` | `id` | — |
-| `list_clear_attempts` | — | `ClearAttempt[]` (ultimi 1000) |
+| `list_clear_attempts` | — | `ClearAttempt[]` (last 1000) |
 | `save_clear_attempt` | `AttemptInput` | `ClearAttempt` |
 | `delete_clear_attempt` | `id` | — |
-
-| `get_match_analysis` | `puuid` | `AnalysisDataset \| null` (solo dati locali) |
+| `get_match_analysis` | `puuid` | `AnalysisDataset \| null` (local data only) |
 | `get_client_account_status` | — | `ClientStatus` |
 | `set_client_sync_enabled` | `enabled` | `ClientStatus` |
-| `sync_from_client` | — | `ClientStatus` (async, lettura immediata) |
-| `set_league_install_path` | `path \| null` (validato: contiene `LeagueClient.exe`) | `ClientStatus` |
+| `sync_from_client` | — | `ClientStatus` (async, immediate read) |
+| `set_league_install_path` | `path \| null` (validated: contains `LeagueClient.exe`) | `ClientStatus` |
 | `get_live_snapshot` | — | `LiveSnapshot` |
 | `set_live_enabled` | `enabled` | `LiveSnapshot` |
 | `get_overlay_settings` | — | `OverlaySettings` |
-| `update_overlay_settings` | `OverlayPatch` (async: crea/chiude la finestra) | `OverlaySettings` |
+| `update_overlay_settings` | `OverlayPatch` (async: creates/closes the window) | `OverlaySettings` |
+| `get_live_board` | — | `LiveBoard` |
+| `toggle_live_board` | — | `bool` (panel open) |
+| `is_live_board_open` | — | `bool` |
+| `get_global_stats_status` | — | `GlobalStatsStatus` |
+| `update_global_stats_settings` | `enabled`, `platform`, `seedTier` | `GlobalStatsStatus` |
+| `clear_global_stats` | — | `GlobalStatsStatus` |
+| `get_champion_global_stats` | `championId`, `patch \| null`, `role \| null` | `ChampionGlobalStats` |
+| `get_champion_roles` | — | `ChampionRolesOverview` |
 
-Evento verso la webview: `catalog-updated` (payload: versione) dopo ogni
-import riuscito. `useCatalogUpdateListener` invalida le query `["catalog"]`.
+Riot commands are listed in § 4.8 and backup commands in § 4.11.
 
-I comandi delegano la logica a `Database`; non contengono query o regole di
-business complesse.
+Event to the webview: `catalog-updated` (payload: version) after every
+successful import. `useCatalogUpdateListener` invalidates the `["catalog"]`
+queries.
 
-### 4.2 Errori e log
+Commands delegate the logic to dedicated modules; they contain no queries or
+complex business rules.
 
-`AppError` serializza sempre come:
+### 4.2 Errors and logs
+
+`AppError` always serializes as:
 
 ```json
 { "code": "DATABASE_ERROR", "message": "Operazione sul database locale non riuscita. ..." }
 ```
 
-- `message` è il testo per l'utente (`AppError::user_message`), senza dettagli
-  tecnici. Fanno eccezione gli errori di validazione, già comprensibili.
-- Il dettaglio tecnico (`Display`) viene scritto nei log da
-  `AppError::logged()` al confine di ogni comando.
+- `message` is the text for the user (`AppError::user_message`, in Italian like
+  the UI), without technical details. Validation errors are the exception,
+  being already understandable.
+- The technical detail (`Display`) is written to the logs by
+  `AppError::logged()` at the boundary of every command.
 
-Codici esposti: `DATABASE_ERROR`, `VALIDATION_ERROR`, `BACKEND_UNAVAILABLE`.
-Il frontend normalizza codici sconosciuti in `UNKNOWN_ERROR`.
+Exposed codes: `DATABASE_ERROR`, `VALIDATION_ERROR`, `NETWORK_ERROR`, `BUSY`,
+`NOT_FOUND`, `RIOT_KEY`, `RATE_LIMITED`, `BACKEND_UNAVAILABLE`. The frontend
+normalizes unknown codes to `UNKNOWN_ERROR`.
 
-**Log locali** (`tauri-plugin-log`): file ruotati (1 MB, 5 file conservati,
-timestamp UTC) in `%LOCALAPPDATA%\com.tecca.codeoflegends\logs\`, più stdout in
-sviluppo. Il percorso è esposto nello snapshot (`logDirectory`) e mostrato in
-Impostazioni. Nessun invio remoto; non loggare mai segreti.
+**Local logs** (`tauri-plugin-log`): rotated files (1 MB, 5 files kept, UTC
+timestamps) in `%LOCALAPPDATA%\com.tecca.codeoflegends\logs\`, plus stdout in
+development. The path is exposed in the snapshot (`logDirectory`) and shown in
+Settings. Nothing is sent remotely; secrets are never logged.
 
-**Database non apribile:** l'app non termina. `DatabaseSlot::Unavailable`
-viene gestito come stato Tauri, ogni comando restituisce `DATABASE_ERROR` con
-un messaggio che indica la cartella dei log, e la UI mostra lo stato di errore.
+**Database that cannot be opened:** the app does not exit.
+`DatabaseSlot::Unavailable` is handled as Tauri state, every command returns
+`DATABASE_ERROR` with a message pointing to the log folder, and the UI shows the
+error state.
 
 ### 4.3 Database
 
-Apertura in `Database::open`:
+Opening in `Database::open`:
 
-- directory applicativa Tauri creata se assente;
+- Tauri app directory created if missing;
 - `journal_mode = WAL`;
 - `foreign_keys = ON`;
 - `busy_timeout = 5000`;
-- migrazioni mancanti applicate in transazione;
-- evento reale "Applicazione avviata" registrato;
-- activity log limitato a 200 record.
+- missing migrations applied in a transaction;
+- real "Application started" event recorded;
+- activity log limited to 200 records.
 
-### 4.4 Schema di base (v2, invariato)
+### 4.4 Base schema (v2, unchanged)
 
-| Tabella | Scopo | Note |
+| Table | Purpose | Notes |
 | --- | --- | --- |
-| `settings` | Preferenze locali | Valori JSON serializzati, `updated_at` |
-| `champions` | Cache campioni futura | `champion_key` univoco |
-| `favorite_champions` | Preferiti | FK con `ON DELETE CASCADE` |
-| `rune_pages` | Pagine runiche future | `shards_json` |
-| `builds` | Build future | `items_json`, `skill_order_json` |
-| `jungle_routes` | Route future | `steps_json`, `patch` |
-| `players` | Profili futuri | chiave `puuid` |
-| `matches` | Cronologia futura | `raw_json`, indici per player e data |
-| `match_participants` | Partecipanti | chiave composta `(match_id, puuid)` |
-| `matchup_notes` | Note personali | FK verso `champions` |
-| `activity_log` | Eventi reali locali | indice su `created_at` |
+| `settings` | Local preferences | Serialized JSON values, `updated_at` |
+| `champions` | Champion identity | Unique `champion_key` |
+| `favorite_champions` | Favorites | FK with `ON DELETE CASCADE` |
+| `rune_pages` | Future rune pages | `shards_json` |
+| `builds` | Future builds | `items_json`, `skill_order_json` |
+| `jungle_routes` | Custom jungle routes | `steps_json`, `patch` |
+| `players` | Riot profiles | key `puuid` |
+| `matches` | Match history | `raw_json`, indexes per player and date |
+| `match_participants` | Participants | composite key `(match_id, puuid)` |
+| `matchup_notes` | Personal notes | FK to `champions` |
+| `activity_log` | Real local events | index on `created_at` |
 
-Tutte le tabelle sono `STRICT`. I timestamp sono ISO 8601 UTC generati da
-SQLite con `strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`.
+All tables are `STRICT`. Timestamps are ISO 8601 UTC generated by SQLite with
+`strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`.
 
-### 4.5 Catalogo Data Dragon (schema v3)
+### 4.5 Data Dragon catalog (schema v3)
 
-Moduli Rust:
+Rust modules:
 
 ```
-ddragon/model.rs     forme JSON grezze (serde), campi richiesti obbligatori
-ddragon/bundle.rs    conversione + validazione (prima di qualsiasi scrittura)
-ddragon/client.rs    HTTP: timeout, 3 tentativi con backoff solo su errori transitori
-ddragon/sync.rs      un sync alla volta, scheduler ogni 6 h, registro controlli
-catalog/repository.rs  tutto l'SQL: import transazionale, verifica, query
-catalog/dto.rs       contratti verso il frontend (Zod in src/types/catalog.ts)
+ddragon/model.rs       raw JSON shapes (serde), required fields mandatory
+ddragon/bundle.rs      conversion + validation (before any write)
+ddragon/client.rs      HTTP: timeouts, 3 attempts with backoff on transient errors only
+ddragon/sync.rs        one sync at a time, scheduler every 6 h, check log
+catalog/repository.rs  all SQL: transactional import, verification, queries
+catalog/dto.rs         contracts for the frontend (Zod in src/types/catalog.ts)
 ```
 
-| Tabella | Chiave | Note |
+| Table | Key | Notes |
 | --- | --- | --- |
-| `patch_versions` | `version` | fonte, URL, lingua, conteggi, `imported_at` |
-| `champions` (0001) | `id` = chiave numerica Riot | identità stabile, aggiornata solo dalla patch più recente |
-| `champion_versions` | `(champion_id, patch_version)` | nome, titolo, storia, classi, risorsa, valutazioni, statistiche, immagine |
-| `champion_spells` | `(champion_id, patch_version, slot)` | `P`, `Q`, `W`, `E`, `R`; FK composta verso `champion_versions` |
+| `patch_versions` | `version` | source, URL, language, counts, `imported_at` |
+| `champions` (0001) | `id` = Riot numeric key | stable identity, updated only by the newest patch |
+| `champion_versions` | `(champion_id, patch_version)` | name, title, lore, classes, resource, ratings, stats, image |
+| `champion_spells` | `(champion_id, patch_version, slot)` | `P`, `Q`, `W`, `E`, `R`; composite FK to `champion_versions` |
 | `champion_skins` | `(patch_version, skin_id)` | `UNIQUE (patch_version, champion_id, num)` |
-| `items` | `(patch_version, item_id)` | oro, acquistabile, in negozio, mappe, componenti |
-| `rune_trees`, `runes` | `(patch_version, id)` | FK runa → albero della stessa patch |
-| `data_dragon_checks` | `id` | esito di ogni controllo (ultimi 200) |
+| `items` | `(patch_version, item_id)` | gold, purchasable, in store, maps, components |
+| `rune_trees`, `runes` | `(patch_version, id)` | FK rune → tree of the same patch |
+| `data_dragon_checks` | `id` | outcome of each check (last 200) |
 
-Flusso di import:
+Import flow:
 
-1. `versions.json` → versione release più recente (ordine numerico).
-2. Se già presente: controllo registrato come `up_to_date`.
-3. Download di `championFull.json`, `item.json`, `runesReforged.json` (`it_IT`).
-4. Validazione: versione dei file, id numerici univoci, 4 abilità + passiva,
-   skin base presente, nessun duplicato. Un errore annulla tutto.
-5. Una transazione inserisce tutto, poi `verify_patch` controlla i conteggi
-   rispetto alla fonte, 5 abilità per campione, skin base, nomi unici,
-   `PRAGMA foreign_key_check` e `quick_check`. Un problema causa il rollback.
-6. Commit, evento `catalog-updated` e voce nell'activity log.
+1. `versions.json` → newest release version (numeric order).
+2. If already present: check recorded as `up_to_date`.
+3. Download of `championFull.json`, `item.json`, `runesReforged.json`
+   (`it_IT`).
+4. Validation: file version, unique numeric ids, 4 abilities + passive, base
+   skin present, no duplicates. Any error cancels everything.
+5. One transaction inserts everything, then `verify_patch` checks the counts
+   against the source, 5 abilities per champion, base skin, unique names,
+   `PRAGMA foreign_key_check` and `quick_check`. Any problem rolls back.
+6. Commit, `catalog-updated` event and activity log entry.
 
-Garanzie: trigger `BEFORE UPDATE/DELETE` rendono immutabili tutte le tabelle
-versionate; reimportare una versione esistente è rifiutato; importare una patch
-più vecchia non sovrascrive l'identità dei campioni.
+Guarantees: `BEFORE UPDATE/DELETE` triggers make all versioned tables
+immutable; re-importing an existing version is refused; importing an older
+patch does not overwrite the champions' identity.
 
-Testo: le descrizioni Data Dragon contengono markup. Rust lo converte in testo
-semplice (`html_to_text`) e la UI non usa mai `dangerouslySetInnerHTML`.
+Text: Data Dragon descriptions contain markup. Rust converts it to plain text
+(`html_to_text`) and the UI never uses `dangerouslySetInnerHTML`.
 
-### 4.6 Preferenze sui campioni (schema v4)
+### 4.6 Champion preferences (schema v4)
 
-- `favorite_champions` (0001) e `user_champion_lanes` (0004), entrambe legate a
-  `champions.id`: sopravvivono a ogni nuova patch.
-- Le corsie (`TOP`, `JUNGLE`, `MIDDLE`, `BOTTOM`, `UTILITY`) sono **dati
-  dell'utente**: Data Dragon non le pubblica e non vengono mai presentate come
-  ufficiali. In futuro potranno essere proposte dalle partite reali (Riot API).
-- SQL in `catalog/preferences.rs`; il catalogo arricchisce ogni campione con
-  `favorite` e `lanes` in un solo passaggio (`PreferenceIndex`).
-- Frontend: mutazioni ottimistiche su lista e dettaglio con rollback in caso
-  di errore (`useToggleFavorite`, `useSetChampionLanes`).
+- `favorite_champions` (0001) and `user_champion_lanes` (0004), both tied to
+  `champions.id`: they survive every new patch.
+- Lanes shown in the UI now come from real matches (§ 4.9c); the table
+  `user_champion_lanes` stays in the schema (append-only migrations) but is no
+  longer used by the interface.
+- SQL in `catalog/preferences.rs`; the catalog enriches each champion with
+  `favorite` and `lanes` in a single pass (`PreferenceIndex`).
+- Frontend: optimistic mutations on list and detail with rollback on error
+  (`useToggleFavorite`).
 
 ### 4.7 Jungle & Farming (schema v5)
 
-Solo dati di allenamento dell'utente: nessuna integrazione live.
+User training data only: no live integration.
 
-- Rust `jungle/`: `CAMP_IDS` (14 campi, specchio di `src/types/jungle.ts`),
-  validazione di ogni input (lato, campi noti e non ripetuti, nome ≤ 60, note ≤
-  500, campione esistente, tempi crescenti, clear ≤ 30 minuti).
-- Percorsi personalizzati in `jungle_routes` (0001): `steps_json` = campi.
-- Tentativi in `jungle_clear_attempts` + `jungle_clear_splits` (0005): ogni
-  split è il tempo cumulativo al completamento di un campo; il totale è
-  l'ultimo split. Il tentativo conserva nome, lato e campi del percorso.
-- Frontend `features/jungle/`: dati schematici della mappa (`data/camps.ts`),
-  percorsi modello (`data/routes.ts`), cronometro come reducer puro
-  (`lib/training-timer.ts`, testato con orologio simulato) e statistiche
-  (`lib/attempt-stats.ts`). Lo stato del cronometro vive nella pagina, così la
-  mappa mostra i progressi e il cambio percorso è bloccato durante un clear.
+- Rust `jungle/`: `CAMP_IDS` (14 camps, mirror of `src/types/jungle.ts`),
+  validation of every input (side, known and non-repeated camps, name ≤ 60,
+  notes ≤ 500, existing champion, increasing times, clear ≤ 30 minutes).
+- Custom routes in `jungle_routes` (0001): `steps_json` = camps.
+- Attempts in `jungle_clear_attempts` + `jungle_clear_splits` (0005): each
+  split is the cumulative time when a camp is completed; the total is the last
+  split. The attempt keeps the route name, side and camps.
+- Frontend `features/jungle/`: schematic map data (`data/camps.ts`), template
+  routes (`data/routes.ts`), stopwatch as a pure reducer
+  (`lib/training-timer.ts`, tested with a simulated clock) and statistics
+  (`lib/attempt-stats.ts`). The stopwatch state lives in the page, so the map
+  shows progress and switching route is blocked during a clear.
 
-### 4.8 Riot API e dati giocatore (schema v6)
+### 4.8 Riot API and player data (schema v6)
 
-Modulo Rust `riot/`, un servizio per responsabilità:
+Rust module `riot/`, one service per responsibility:
 
 ```
-routing.rs     piattaforme (euw1…) → cluster (americas/europe/asia/sea)
-rate_limit.rs  finestre 18/1 s e 95/120 s per routing value + blocco Retry-After
-secrets.rs     KeyProvider: RIOT_API_KEY, poi Gestione credenziali di Windows
-transport.rs   HTTP dietro una trait (simulato nei test)
-client.rs      header X-Riot-Token, retry 429/5xx limitati, mappatura errori
-account.rs / summoner.rs / league.rs / matches.rs   un modulo per API Riot
+routing.rs     platforms (euw1…) → clusters (americas/europe/asia/sea)
+rate_limit.rs  18/1 s and 95/120 s windows per routing value + Retry-After block
+secrets.rs     KeyProvider: RIOT_API_KEY, then the Windows Credential Manager
+transport.rs   HTTP behind a trait (simulated in tests)
+client.rs      X-Riot-Token header, limited 429/5xx retries, error mapping
+account.rs / summoner.rs / league.rs / matches.rs   one module per Riot API
 repository.rs  SQLite: players, player_ranked, matches, match_participants,
                player_matches, saved_profiles, player_sync
-sync.rs        TTL (profilo 60', rank 10', partite 3'), deduplica, lock per PUUID
+sync.rs        TTLs (profile 60', rank 10', matches 3'), dedup, lock per PUUID
 ```
 
-Errori dedicati: `NOT_FOUND` (Riot ID inesistente), `RIOT_KEY` (chiave
-mancante, non valida o scaduta), `RATE_LIMITED` (con secondi di attesa).
+Dedicated errors: `NOT_FOUND` (unknown Riot ID), `RIOT_KEY` (missing, invalid
+or expired key), `RATE_LIMITED` (with seconds to wait).
 
-Comandi: `get_riot_key_status`, `set_riot_api_key` (sola scrittura),
+Commands: `get_riot_key_status`, `set_riot_api_key` (write-only),
 `clear_riot_api_key`, `verify_riot_api_key`, `search_player`, `sync_player`,
 `get_player_profile`, `get_primary_profile`, `list_saved_profiles`,
 `save_player_profile`, `remove_player_profile`, `delete_player_data`.
 
-La partita è condivisa tra giocatori: il collegamento è `player_matches`
-(`matches.player_puuid` della 0001 resta inutilizzata). `matches.raw_json`
-conserva la risposta originale di match-v5.
+A match is shared between players: the link is `player_matches`
+(`matches.player_puuid` from 0001 stays unused). `matches.raw_json` keeps the
+original match-v5 response.
 
 ### 4.9 Match Analysis & Matchups (schema v7)
 
-Modulo Rust `analysis/`: `repository::dataset` restituisce le partite del
-giocatore arricchite con:
+Rust module `analysis/`: `repository::dataset` returns the player's matches
+enriched with:
 
-- avversario di corsia (stesso `teamPosition`, squadra opposta, solo se
-  univoco);
-- alleati, nemici e kill della squadra;
-- ban;
-- oggetti con il flag "completato" da Data Dragon;
-- rune;
+- lane opponent (same `teamPosition`, opposite team, only if unique);
+- allies, enemies and team kills;
+- bans;
+- items with the "completed" flag from Data Dragon;
+- runes;
 - patch.
 
-Le aggregazioni sono funzioni pure TypeScript
-(`src/features/analysis/lib`, `src/features/matchups/lib`), così card,
-tabelle e grafici usano gli stessi numeri. Migrazione `0007_match_analysis`:
-aggiunge `match_participants.damage_taken` e la tabella `match_bans`, e fa il
-backfill da `matches.raw_json`. Dettagli in
+Aggregations are pure TypeScript functions (`src/features/analysis/lib`,
+`src/features/matchups/lib`), so cards, tables and charts use the same
+numbers. Migration `0007_match_analysis` adds `match_participants.damage_taken`
+and the `match_bans` table, with a backfill from `matches.raw_json`. Details in
 [MATCH_ANALYSIS.md](MATCH_ANALYSIS.md).
 
-### 4.9 bis Account dal client League (schema v8)
+### 4.9b Account from the League client (schema v8)
 
-Modulo Rust `client/` (LCU, sola lettura, senza chiave API):
-
-```
-lockfile.rs    cartella di League (override, metadati Riot, percorsi
-               standard) e lettura del lockfile (password mai stampata)
-source.rs      ClientSource (trait) + HttpClientSource: GET Basic auth su
-               127.0.0.1, CA Riot, nessun proxy
-convert.rs     risposte LCU → LeagueEntry e MatchDto (stesso storage di
-               match-v5; match id "EUW1_<gameId>", nessun doppione)
-sync.rs        account → profilo salvato (principale se non ce n'è uno),
-               rank, ultime 20 partite con source = 'league-client'
-service.rs     controllo ogni 30 s, lettura a ogni nuova sessione e poi ogni
-               10 min, evento `client-account-updated`, Riot ID dalla Live
-               Client come riserva
-repository.rs  preferenze: attivo, cartella manuale, Riot ID visto in partita
-```
-
-Comandi: `get_client_account_status`, `set_client_sync_enabled`,
-`sync_from_client`, `set_league_install_path`. La migrazione
-`0008_client_source` aggiunge `matches.source` e
-`player_sync.client_synced_at`; la fonte mostrata ("Riot API", "Client League
-(LCU)" o entrambe) è calcolata dai dati salvati.
-
-### 4.9 ter Statistiche globali dei campioni (schema v9)
-
-Modulo Rust `meta/` (Riot API ufficiale con la chiave dell'utente, opt-in,
-disattivato di default):
+Rust module `client/` (LCU, read-only, no API key):
 
 ```
-collector.rs   un passo: classifica league-v4 della fascia scelta (Master+:
-               challenger/grandmaster/master; Diamante/Smeraldo/Platino:
-               divisioni I e II, pagina 1) al massimo una volta al giorno,
-               poi le partite Solo/Duo (queue 420) delle ultime 2 settimane
-               di un giocatore (match-v5), scaricate una sola volta.
-               Una richiesta ogni 2,5 s (circa metà di una chiave dev)
-store.rs       impostazioni, giocatori di partenza, righe compatte per
-               partecipante (pagina di rune canonica, rune chiave,
-               incantesimi, oggetti), ban; conserva le ultime 3 patch
-stats.rs       aggregazioni per campione/patch/ruolo: popolarità, vittorie,
-               ban, ruoli, pagine di rune, rune chiave, incantesimi, stivali,
-               oggetti completi, avversari di corsia (minimo 5 partite)
-service.rs     ciclo in background, stato in memoria, pause su 429/errori
-static_data.rs nomi e icone di frammenti e incantesimi evocatore (Data Dragon
-               non importa summoner.json né i frammenti)
+lockfile.rs    League folder (override, Riot metadata, standard paths) and
+               lockfile reading (password never printed)
+source.rs      ClientSource (trait) + HttpClientSource: GET with Basic auth to
+               127.0.0.1, Riot CA, no proxy
+convert.rs     LCU responses → LeagueEntry and MatchDto (same storage as
+               match-v5; match id "EUW1_<gameId>", no duplicates; full rune
+               page, no shards)
+sync.rs        account → saved profile (main if there is none), rank, last
+               20 matches with source = 'league-client'
+service.rs     check every 30 s, read at each new session and then every
+               10 min, `client-account-updated` event, Riot ID from the Live
+               Client as a fallback
+repository.rs  preferences: enabled, manual folder, Riot ID seen in game
 ```
 
-Comandi: `get_global_stats_status`, `update_global_stats_settings`,
+Commands: `get_client_account_status`, `set_client_sync_enabled`,
+`sync_from_client`, `set_league_install_path`. Migration `0008_client_source`
+adds `matches.source` and `player_sync.client_synced_at`; the source shown
+("Riot API", "League client (LCU)" or both) is computed from stored data.
+
+### 4.9c Champion statistics (schema v9–v10)
+
+Rust module `meta/` (official Riot API with the user's key, opt-in, off by
+default):
+
+```
+collector.rs   one step: league-v4 ladder of the chosen tier (Master+:
+               challenger/grandmaster/master; Diamond/Emerald/Platinum:
+               divisions I and II, page 1) at most once a day, then the
+               Solo/Duo matches (queue 420) of the last 2 weeks of one player
+               (match-v5) and their timelines, each downloaded once.
+               One request every 2.5 s (about half of a development key)
+store.rs       settings, seed players, compact rows per participant
+               (canonical rune page, keystone, summoner spells, items, skill
+               order, starting items, purchases), bans; keeps the last 3
+               patches; copy of the user's own matches
+stats.rs       aggregations per champion/patch/role: popularity, wins, bans,
+               roles, rune pages, keystones, summoner spells, boots,
+               completed items, skill order, starting and core builds, lane
+               opponents (minimum 5 games, 2 for personal data), real lanes
+service.rs     background loop, in-memory state, pauses on 429/errors and
+               while the in-game panel is loading
+static_data.rs names and icons of rune shards and summoner spells (Data
+               Dragon does not import summoner.json or the shards)
+```
+
+Commands: `get_global_stats_status`, `update_global_stats_settings`,
 `clear_global_stats`, `get_champion_global_stats`, `get_champion_roles`.
 
-Schema v10 (`0010_global_timeline`): per ogni partita raccolta si legge anche
-la timeline match-v5 (una richiesta in più) per ordine delle abilità, oggetti
-iniziali (primi 90 s) e ordine di acquisto; le partite già salvate vengono
-completate 5 alla volta. Le partite personali (Riot API o client League) sono
-copiate con `seed_tier = 'PERSONAL'`: non entrano mai nelle statistiche
-globali, ma la pagina del campione le usa (etichettate) quando le partite
-raccolte non contengono quel campione. Le corsie mostrate nella lista e nella
-scheda sono quelle giocate davvero (almeno il 15% delle partite con corsia
-nota), non più scelte dall'utente; la tabella `user_champion_lanes` resta
-ma non è più usata dall'interfaccia. Nessuna percentuale è
-salvata: tutto è ricalcolato dalle righe a ogni richiesta e la UI mostra
-sempre la numerosità. Remake (< 5 min o resa anticipata) esclusi. Il rank è
-verificato solo per il giocatore da cui parte ogni partita.
+Schema v10 (`0010_global_timeline`): for each collected match the match-v5
+timeline is also read (one more request) for skill order, starting items
+(first 90 s) and purchase order; already stored matches are completed 5 at a
+time. The user's own matches (Riot API or League client) are copied with
+`seed_tier = 'PERSONAL'`: they never enter the collected statistics, but the
+champion page uses them (labelled) when the collected matches do not contain
+that champion. Lanes shown in the list and the detail are those really played
+(at least 15% of the games with a known lane), no longer chosen by the user. No
+percentage is stored: everything is recomputed from the rows at every request
+and the UI always shows the sample size. Remakes (< 5 min or early surrender)
+are excluded. The rank is verified only for the player each match starts from.
 
-UI: Impostazioni → *Statistiche globali dei campioni* (interruttore, regione,
-fascia, contatori, eliminazione) e pagina del campione (ruoli, patch,
-panoramica, rune complete con alternative, oggetti, incantesimi, counter).
+UI: Settings → *Champion statistics* (switch, region, tier, counters,
+deletion) and the champion page (lanes, patch, overview, skill order, builds,
+counters, role, summoner spells, full runes with alternatives), always shown
+with explicit empty states and a banner to start the collection.
 
-### 4.10 Live Game & Overlay (nessuna migrazione)
+### 4.10 Live Game, overlay and in-game panel (no migration)
 
-Modulo Rust `live/`, policy e limiti in [LIVE_GAME.md](LIVE_GAME.md):
+Rust module `live/`, policies and limits in [LIVE_GAME.md](LIVE_GAME.md):
 
 ```
 source.rs      LiveSource (trait) + HttpLiveSource: GET https://127.0.0.1:2999,
-               CA Riot inclusa (certs/riotgames.pem), timeout brevi, no proxy
-snapshot.rs    funzione pura: gamestats + activeplayername + playerlist →
-               LiveSnapshot con i SOLI dati del giocatore locale
-service.rs     LiveService: opt-in, polling 2 s in partita / 5 s altrimenti,
-               emette `live-game-update` solo sui cambiamenti
-overlay.rs     OverlaySettings: validazione, patch, posizionamento puro
-window.rs      finestra `overlay`: trasparente, sempre sopra, click-through;
-               nascosta = distrutta
-repository.rs  chiavi `live_enabled` e `overlay` nella tabella settings
+               bundled Riot CA (certs/riotgames.pem), short timeouts, no proxy
+snapshot.rs    pure function: gamestats + activeplayername + playerlist →
+               LiveSnapshot with the local player's data and the scoreboard
+               identity of the others (no items, scores or timers; hidden
+               names and bots without Riot ID)
+service.rs     LiveService: opt-in, polling every 2 s in game / 5 s otherwise,
+               emits `live-game-update` only on changes
+board.rs       in-game panel: public Riot API profile of each player (level,
+               Solo/Duo rank, last 5 ranked games) and build of the user's
+               champion; `live-board-update` event
+overlay.rs     OverlaySettings: validation, patch, pure positioning
+window.rs      `overlay` and `board` windows: transparent, always on top,
+               click-through; hidden = destroyed; global `Home` shortcut
+repository.rs  `live_enabled` and `overlay` keys in the settings table
 ```
 
-Eventi: `live-game-update` (snapshot) e `overlay-settings-updated`. La
-finestra overlay carica lo stesso bundle e, riconosciuta dalla label,
-renderizza solo `OverlayApp` (nessun router, nessun input). Capability
-`overlay`: `core:event:default`, `log:allow-log`.
+Events: `live-game-update`, `live-board-update` and
+`overlay-settings-updated`. Capability `overlay` (windows `overlay` and
+`board`): `core:event:default`, `log:allow-log`. The global shortcut is
+registered from Rust (`tauri-plugin-global-shortcut`): the webview has no
+shortcut permission.
 
-### 4.11 Migrazioni
+### 4.11 Migrations
 
 ```
-src-tauri/migrations/0001_init.sql                 schema iniziale
-src-tauri/migrations/0002_defaults.sql             valori di default + primo evento
-src-tauri/migrations/0003_data_dragon_catalog.sql  catalogo Data Dragon versionato
-src-tauri/migrations/0004_user_champion_lanes.sql  corsie assegnate dall'utente
-src-tauri/migrations/0005_jungle_training.sql      tentativi di clear e split
-src-tauri/migrations/0006_riot_player_data.sql     dati giocatore Riot API
-src-tauri/migrations/0007_match_analysis.sql       danni subiti, ban (backfill da raw_json)
-src-tauri/migrations/0008_client_source.sql        fonte delle partite, lettura dal client
+src-tauri/migrations/0001_init.sql                 initial schema
+src-tauri/migrations/0002_defaults.sql             default values + first event
+src-tauri/migrations/0003_data_dragon_catalog.sql  versioned Data Dragon catalog
+src-tauri/migrations/0004_user_champion_lanes.sql  lanes assigned by the user
+src-tauri/migrations/0005_jungle_training.sql      clear attempts and splits
+src-tauri/migrations/0006_riot_player_data.sql     Riot API player data
+src-tauri/migrations/0007_match_analysis.sql       damage taken, bans (backfill from raw_json)
+src-tauri/migrations/0008_client_source.sql        match source, client read
+src-tauri/migrations/0009_global_stats.sql         opt-in champion statistics
+src-tauri/migrations/0010_global_timeline.sql      timeline data, personal matches
 ```
 
-`MIGRATIONS` in `src-tauri/src/db.rs` elenca i file con `include_str!`. La
-versione applicata è tracciata con `PRAGMA user_version`.
+`MIGRATIONS` in `src-tauri/src/db.rs` lists the files with `include_str!`. The
+applied version is tracked with `PRAGMA user_version`.
 
-**Regola:** mai modificare una migrazione già rilasciata. Per ogni modifica:
+**Rule:** never change a released migration. For every change:
 
-1. creare `000N_descrizione.sql`;
-2. aggiungerla a `MIGRATIONS` in ordine;
-3. verificare l'avvio su un database esistente e su uno nuovo.
+1. create `000N_description.sql`;
+2. add it to `MIGRATIONS` in order;
+3. verify startup on an existing database and on a new one.
 
-All'apertura, prima di migrare:
+On opening, before migrating:
 
-- un database con schema **più recente** di quello conosciuto viene rifiutato
-  senza modifiche (protezione dal downgrade);
-- un database esistente con schema più vecchio riceve un **backup verificato**
+- a database with a **newer** schema than the known one is refused without
+  changes (downgrade protection);
+- an existing database with an older schema gets a **verified backup**
   (`VACUUM INTO` + `integrity_check`) in `backups/`.
 
-Il modulo `backup.rs` gestisce anche i backup manuali (comandi
-`create_database_backup` e `list_database_backups`) e conserva gli ultimi 10.
-Guida completa: [DATABASE.md](DATABASE.md).
+The `backup.rs` module also handles manual backups (commands
+`create_database_backup` and `list_database_backups`) and keeps the last 10.
+Full guide: [DATABASE.md](DATABASE.md).
 
 ---
 
-## 5. Sicurezza
+## 5. Security
 
 - **CSP** in `tauri.conf.json`:
-  - produzione (`csp`): `default-src 'self'`, `connect-src` limitato all'IPC,
-    `img-src` con Data Dragon, `object-src 'none'`, `base-uri 'self'`,
-    `frame-ancestors 'none'`, nessun `unsafe-eval`;
-  - sviluppo (`devCsp`): aggiunge solo il dev server Vite.
-- **Capabilities** minime:
-  - `main`: `core:event:default`, `opener:allow-open-url` con scope limitato,
-    `log:allow-log`;
-  - `overlay`: `core:event:default`, `log:allow-log`.
-  I comandi applicativi non richiedono permessi core. Il test Rust
-  `release_tests` fallisce se compaiono `core:default`, `shell:`, `fs:`,
-  `http:` o `process:`, o se la CSP di produzione contiene il dev server.
-- **Rete**: solo il backend Rust contatta Data Dragon, la Riot API (chiave
-  nell'header, rate limit, retry limitati) e la Live Client Data API locale
-  (CA Riot verificata). Dettagli in [RIOT_COMPLIANCE.md](RIOT_COMPLIANCE.md).
-- **Link esterni** solo HTTPS e solo origini in allowlist
-  (`developer.riotgames.com`, `www.riotgames.com`), applicata due volte:
-  in `external-service.ts` e nello scope della capability opener. Le due
-  liste vanno mantenute allineate. Include `www.leagueoflegends.com` per le
-  note patch ufficiali.
-- **Segreti** mai nel frontend, mai in `VITE_*`, mai nei log. `.env*` ignorati
-  tranne `.env.example`.
-- **Input** validati due volte: Zod lato client, Rust lato backend.
-- **SQL** mai costruito con input utente; i nomi tabella provengono da una
-  costante interna.
+  - production (`csp`): `default-src 'self'`, `connect-src` limited to IPC,
+    `img-src` with Data Dragon, `object-src 'none'`, `base-uri 'self'`,
+    `frame-ancestors 'none'`, no `unsafe-eval`;
+  - development (`devCsp`): adds only the Vite dev server.
+- **Minimal capabilities**:
+  - `main`: `core:event:default`, `opener:allow-open-url` with a limited
+    scope, `log:allow-log`;
+  - `overlay` (windows `overlay` and `board`): `core:event:default`,
+    `log:allow-log`.
+  App commands need no core permissions. The Rust test `release_tests` fails if
+  `core:default`, `shell:`, `fs:`, `http:` or `process:` appear, or if the
+  production CSP contains the dev server.
+- **Network**: only the Rust backend contacts Data Dragon, the Riot API (key in
+  the header, rate limits, limited retries) and the local Live Client Data API
+  and League client (Riot CA verified). Details in
+  [RIOT_COMPLIANCE.md](RIOT_COMPLIANCE.md).
+- **External links** HTTPS only and only allowlisted origins
+  (`developer.riotgames.com`, `www.riotgames.com`, `www.leagueoflegends.com`
+  for official patch notes), enforced twice: in `external-service.ts` and in
+  the opener capability scope. The two lists must stay aligned.
+- **Secrets** never in the frontend, never in `VITE_*`, never in logs. `.env*`
+  ignored except `.env.example`.
+- **Input** validated twice: Zod on the client, Rust on the backend.
+- **SQL** never built from user input; table and column names come from
+  internal constants.
 
 ---
 
-## 6. Scelte tecniche e motivazioni
+## 6. Technical choices and reasons
 
-| Scelta | Motivazione |
+| Choice | Reason |
 | --- | --- |
-| HashRouter | Evita problemi di deep link e reload nel webview Tauri |
-| SQLite bundled (`rusqlite`) | Nessuna dipendenza da un'installazione esterna |
-| Migrazioni con `include_str!` | Schema versionato nel binario, nessun file esterno mancante |
-| Zod + Rust validation | Difesa in profondità sui confini |
-| TanStack Query | Cache, retry, invalidazione e stato server esplicito |
-| Zustand minimale | Solo UI state, nessuna duplicazione di dati server |
-| Primitives shadcn-style locali | Controllo completo su stile e accessibilità senza generatore |
-| Snapshot browser esplicito | La UI resta ispezionabile senza simulare un backend |
+| HashRouter | Avoids deep-link and reload problems in the Tauri webview |
+| Bundled SQLite (`rusqlite`) | No dependency on an external installation |
+| Migrations with `include_str!` | Schema versioned in the binary, no missing external files |
+| Zod + Rust validation | Defense in depth at the boundaries |
+| TanStack Query | Cache, retries, invalidation and explicit server state |
+| Minimal Zustand | UI state only, no duplication of server data |
+| Local shadcn-style primitives | Full control of style and accessibility without a generator |
+| Explicit browser snapshot | The UI stays inspectable without simulating a backend |
 
 ---
 
-## 7. Come estendere il progetto
+## 7. How to extend the project
 
-### Nuovo modulo UI
+### New UI module
 
-1. Aggiungere la voce in `MODULES` (`src/app/navigation.ts`).
-2. Creare `src/features/<feature>/<feature>-page.tsx`.
-3. Registrare la rotta in `src/app/router.tsx`.
-4. Finché i dati non sono reali, usare `FeaturePlaceholder` con scope e
-   prerequisiti onesti.
+1. Add the entry to `MODULES` (`src/app/navigation.ts`).
+2. Create `src/features/<feature>/<feature>-page.tsx`.
+3. Register the route in `src/app/router.tsx`.
+4. Until the data is real, use `FeaturePlaceholder` with an honest scope and
+   prerequisites.
 
-### Nuovo comando backend
+### New backend command
 
-1. Definire i modelli in `src-tauri/src/models.rs`.
-2. Implementare la logica in un modulo dedicato (non nel comando).
-3. Esporre il comando in `commands.rs` e in `generate_handler!`.
-4. Definire lo schema Zod in `src/types/`.
-5. Aggiungere la funzione in `src/services/`.
-6. Creare l'hook TanStack Query e gestire loading/empty/error.
-7. Aggiungere un test manuale verificato e riportarlo.
+1. Define the models in `src-tauri/src/models.rs` or the module's `dto.rs`.
+2. Implement the logic in a dedicated module (not in the command).
+3. Expose the command in `commands.rs` and in `generate_handler!`.
+4. Define the Zod schema in `src/types/`.
+5. Add the function in `src/services/`.
+6. Create the TanStack Query hook and handle loading/empty/error.
+7. Add a verified manual check and report it.
 
-### Nuova migrazione
+### New migration
 
-1. Creare il file SQL numerato.
-2. Aggiungerlo a `MIGRATIONS`.
-3. Verificare sia un database nuovo sia uno già alla versione precedente.
-4. Non modificare mai i file precedenti.
+1. Create the numbered SQL file.
+2. Add it to `MIGRATIONS`.
+3. Verify both a new database and one at the previous version.
+4. Never change earlier files.
 
 ---
 
-## 8. Debito tecnico noto
+## 8. Known technical debt
 
-- Bundle JS principale oltre 500 kB; i grafici Recharts sono già in chunk lazy.
-- L'elenco delle regioni è duplicato in tre punti (`RIOT_REGIONS`,
+- Main JS bundle above 500 kB; Recharts charts are already in a lazy chunk.
+- The region list is duplicated in three places (`RIOT_REGIONS`,
   `riotRegionSchema`, `VALID_REGIONS` in Rust).
-- Nei modelli Rust `state` e `kind` sono `String` mentre Zod usa enum: un
-  valore nuovo lato backend farebbe fallire l'intero snapshot.
-- La potatura dell'activity log avviene solo all'avvio.
-- La modalità degradata (database non apribile) è verificata solo in
-  compilazione, non con un guasto reale.
-- Le immagini Data Dragon non sono in cache locale: offline i dati restano
-  consultabili, mentre le immagini dipendono dalla cache di WebView2.
-- Le skin senza immagine vengono rilevate solo nella UI, al caricamento.
-- Oggetti e rune sono importati ma non hanno ancora una schermata (Fase 3).
-- `matches` non ha ancora un vincolo di unicità per giocatore oltre alla chiave
-  primaria `match_id`; da rivedere con l'integrazione reale.
-- L'activity log è potenzialmente rumoroso su molti avvii; la potatura a 200
-  record mitiga ma non elimina il problema.
-- Installer non firmato (manca un certificato Authenticode).
+- In the Rust models `state` and `kind` are `String` while Zod uses enums: a
+  new backend value would make the whole snapshot fail.
+- Activity log pruning happens only at startup.
+- Degraded mode (database that cannot be opened) is verified only at compile
+  time, not with a real failure.
+- Data Dragon images are not cached locally: offline the data stays readable,
+  while images depend on the WebView2 cache.
+- Skins without an image are detected only in the UI, on load.
+- The `user_champion_lanes` table and the `set_champion_lanes` command are no
+  longer used by the UI.
+- `matches` has no uniqueness constraint per player beyond the primary key
+  `match_id`.
+- The activity log can be noisy over many starts; pruning to 200 records
+  mitigates but does not remove the problem.
+- Unsigned installer (no Authenticode certificate).
+- User-facing texts and error messages are in Italian only.
 
 ---
 
-## 9. Aggiornamenti
+## 9. Updates
 
-Stato attuale (0.10.0): **aggiornamento manuale tramite installer NSIS**.
-L'installer della nuova versione sostituisce i file dell'app in
-`%LOCALAPPDATA%\TECCA CODEOFLEGENDS` e lascia invariati i dati in
-`%APPDATA%\com.tecca.codeoflegends`.
+Current state (0.10.0): **manual update through the NSIS installer**. The
+installer of the new version replaces the app files in
+`%LOCALAPPDATA%\TECCA CODEOFLEGENDS` and leaves the data in
+`%APPDATA%\com.tecca.codeoflegends` untouched.
 
-L'architettura è già pronta per aggiornamenti senza perdita di dati:
+The architecture is already ready for updates without data loss:
 
-| Elemento | Dove |
+| Element | Where |
 | --- | --- |
-| Versione unica in `package.json`, `Cargo.toml` e `tauri.conf.json` | Test `release_tests::version_is_identical_in_cargo_tauri_and_npm` |
-| Migrazioni append-only con transazione e `user_version` | `db.rs` |
-| Backup verificato automatico prima di ogni migrazione | `backup.rs` |
-| Rifiuto di un database creato da una versione più recente | `Database::check_compatible` |
-| Nessun downgrade dall'installer | `bundle.windows.allowDowngrades = false` |
-| Identificatore stabile (`com.tecca.codeoflegends`) che decide la cartella dati | `tauri.conf.json` |
+| Single version in `package.json`, `Cargo.toml` and `tauri.conf.json` | Test `release_tests::version_is_identical_in_cargo_tauri_and_npm` |
+| Append-only migrations with transaction and `user_version` | `db.rs` |
+| Automatic verified backup before every migration | `backup.rs` |
+| A database created by a newer version is refused | `Database::check_compatible` |
+| No downgrade from the installer | `bundle.windows.allowDowngrades = false` |
+| Stable identifier (`com.tecca.codeoflegends`) that decides the data folder | `tauri.conf.json` |
 
-**Aggiornamento in-app (futuro, non abilitato).** Non è attivo nessun
-aggiornamento automatico: un updater senza firma permetterebbe di distribuire
-binari arbitrari. Se verrà aggiunto, dovrà:
+**In-app update (future, not enabled).** No automatic update is active: an
+unsigned updater would allow distributing arbitrary binaries. If added, it
+must:
 
-1. usare `tauri-plugin-updater` con artifact firmati (chiave minisign
-   generata con `tauri signer generate`). La chiave privata va **fuori** dal
-   repository, la pubblica in `plugins.updater.pubkey`;
-2. leggere il manifest solo da un endpoint HTTPS controllato dal progetto (per
-   esempio GitHub Releases);
-3. chiedere conferma all'utente prima di scaricare e installare, senza
-   aggiornamenti silenziosi;
-4. firmare anche l'installer con Authenticode;
-5. concedere alla finestra `main` solo il permesso `updater:default`, in una
-   capability dedicata.
+1. use `tauri-plugin-updater` with signed artifacts (minisign key generated
+   with `tauri signer generate`). The private key goes **outside** the
+   repository, the public one in `plugins.updater.pubkey`;
+2. read the manifest only from an HTTPS endpoint controlled by the project
+   (for example GitHub Releases);
+3. ask the user for confirmation before downloading and installing, with no
+   silent updates;
+4. also sign the installer with Authenticode;
+5. grant the `main` window only the `updater:default` permission, in a
+   dedicated capability.
 
-## 10. Build e rilascio
+## 10. Build and release
 
 ```powershell
 npm run desktop:build
 ```
 
-- Esegue `npm run build` (typecheck + Vite), compila Rust in `release` (LTO,
-  `opt-level = "s"`, `panic = "abort"`) e crea l'installer NSIS.
-- Target: `nsis` con `installMode: currentUser` (nessun privilegio di
-  amministratore), lingue italiano e inglese e compressione LZMA. WebView2
-  viene installato con il bootstrapper ufficiale, se manca.
-- Output: `src-tauri/target/release/bundle/nsis/TECCA CODEOFLEGENDS_<versione>_x64-setup.exe`.
-- L'eseguibile si chiama `tecca-codeoflegends.exe` (`mainBinaryName`) e il
-  nome mostrato è `TECCA CODEOFLEGENDS` (`productName`).
-- MSI non è generato: richiederebbe WiX e non aggiunge nulla per
-  un'installazione per utente.
+- Runs `npm run build` (typecheck + Vite), compiles Rust in `release` (LTO,
+  `opt-level = "s"`, `panic = "abort"`) and creates the NSIS installer.
+- Target: `nsis` with `installMode: currentUser` (no administrator
+  privileges), Italian and English languages and LZMA compression. WebView2 is
+  installed with the official bootstrapper if missing.
+- Output: `src-tauri/target/release/bundle/nsis/TECCA CODEOFLEGENDS_<version>_x64-setup.exe`.
+- The executable is `tecca-codeoflegends.exe` (`mainBinaryName`) and the shown
+  name is `TECCA CODEOFLEGENDS` (`productName`).
+- No MSI is generated: it would need WiX and adds nothing for a per-user
+  installation.

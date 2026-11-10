@@ -1,119 +1,120 @@
-# Conformità Riot Games
+# Riot Games compliance
 
-TECCA CODEOFLEGENDS è un companion **non affiliato** a Riot Games. Questo
-documento elenca le fonti di dati usate, i vincoli rispettati e le verifiche
-fatte per la release.
+TECCA CODEOFLEGENDS is a companion app **not affiliated** with Riot Games.
+This document lists the data sources it uses, the constraints it respects and
+the checks done for the release.
 
-## 1. Fonti di dati
+## 1. Data sources
 
-| Fonte | Uso | Autenticazione | Dove |
+| Source | Use | Authentication | Where |
 | --- | --- | --- | --- |
-| Data Dragon (`ddragon.leagueoflegends.com`) | Campioni, abilità, skin, oggetti, rune, immagini | Nessuna (CDN pubblico) | Backend Rust |
-| Riot API: account-v1, summoner-v4, league-v4, match-v5, lol-status-v4 | Profili, rank, partite, verifica chiave | Chiave personale dell'utente (`X-Riot-Token`) | Backend Rust |
-| Riot API: league-v4 (classifiche), match-v5 (Solo/Duo) | Statistiche globali dei campioni, **opt-in** | Chiave personale dell'utente | Backend Rust, disattivata di default |
-| Live Client Data API (`127.0.0.1:2999`) | Stato della partita, dati del giocatore locale, Riot ID e campioni della tabella punteggi per il pannello partita | Nessuna, certificato Riot verificato | Backend Rust, opt-in |
-| API del client League (LCU, `127.0.0.1:<porta del lockfile>`) | **Solo il proprio** account, rank e ultime 20 partite, senza chiave | Password di sessione locale dal `lockfile`, certificato Riot verificato | Backend Rust, attiva di default e disattivabile |
+| Data Dragon (`ddragon.leagueoflegends.com`) | Champions, abilities, skins, items, runes, images | None (public CDN) | Rust backend |
+| Riot API: account-v1, summoner-v4, league-v4, match-v5, lol-status-v4 | Profiles, rank, matches, key check | The user's own key (`X-Riot-Token`) | Rust backend |
+| Riot API: league-v4 (ladders), match-v5 (Solo/Duo) | Champion statistics, **opt-in** | The user's own key | Rust backend, off by default |
+| Live Client Data API (`127.0.0.1:2999`) | Game state, the local player's data, Riot IDs and champions of the scoreboard for the in-game panel | None, Riot certificate verified | Rust backend, opt-in |
+| League Client API (LCU, `127.0.0.1:<lockfile port>`) | **Only the user's own** account, rank and last 20 matches, without a key | Local session password from the `lockfile`, Riot certificate verified | Rust backend, on by default and can be turned off |
 
-Il frontend non contatta nessuna di queste API: carica solo le immagini Data
-Dragon, consentite dalla CSP. **Non** vengono usati scraping né siti di
-statistiche di terze parti.
+The frontend contacts none of these APIs: it only loads Data Dragon images,
+allowed by the CSP. **No** scraping and no third-party statistics websites are
+used.
 
-### API del client League (LCU)
+### League Client API (LCU)
 
-Riot documenta che l'API del client **non è ufficialmente supportata** per le
-applicazioni di terze parti: può cambiare o smettere di funzionare con un
-aggiornamento. È usata su richiesta esplicita dell'utente, solo per evitare
-di dover inserire una chiave API per **il proprio account**, con questi
-limiti:
+Riot documents that the client API is **not officially supported** for
+third-party applications: it may change or stop working with an update. It is
+used at the user's explicit request, only to avoid entering an API key for
+**their own account**, with these limits:
 
-| Vincolo | Implementazione |
+| Constraint | Implementation |
 | --- | --- |
-| Solo lettura | Solo richieste GET: `current-summoner`, `region-locale`, `current-ranked-stats`, cronologia e dettaglio partite (`client/sync.rs`) |
-| Nessuna azione sul client | Nessuna POST, PUT o DELETE: niente auto-accept, lobby, champion select, chat o acquisti |
-| File del gioco | Il `lockfile` della cartella di League viene **letto**, mai scritto; nessun altro file del gioco viene toccato |
-| Segreto di sessione | Usato solo in memoria per l'header Basic verso 127.0.0.1; il `Debug` lo nasconde; mai nei log, nel database o nella webview |
-| Rete | Solo `127.0.0.1`, senza proxy; catena TLS verificata con la CA Riot |
-| Dati | Solo l'account connesso nel client; le partite sono salvate con `source = 'league-client'` e l'interfaccia mostra la fonte "Client League (LCU)" |
-| Controllo dell'utente | Interruttore in Impostazioni → Account automatico; lettura manuale con un pulsante |
-| Ritmo | Un controllo ogni 30 s; lettura completa a ogni nuova sessione del client e poi ogni 10 minuti |
+| Read-only | GET requests only: `current-summoner`, `region-locale`, `current-ranked-stats`, match history and match details (`client/sync.rs`) |
+| No client actions | No POST, PUT or DELETE: no auto-accept, lobby, champion select, chat or purchases |
+| Game files | The `lockfile` in the League folder is **read**, never written; no other game file is touched |
+| Session secret | Used only in memory for the Basic header to 127.0.0.1; hidden by `Debug`; never in logs, the database or the webview |
+| Network | `127.0.0.1` only, no proxy; TLS chain verified with the Riot CA |
+| Data | Only the account logged in to the client; matches are stored with `source = 'league-client'` and the UI shows the source "League client (LCU)" |
+| User control | Switch in Settings → Automatic account; manual read with a button |
+| Pace | One check every 30 s; full read at each new client session and then every 10 minutes |
 
-Se il client non è aperto, l'app lo dice e usa i dati già salvati. Durante
-una partita la Live Client Data API fornisce il Riot ID del giocatore, che
-viene ricordato come riserva: senza client o chiave, però, non arrivano né
-rank né partite.
+If the client is not open, the app says so and uses the data already stored.
+During a game the Live Client Data API provides the player's Riot ID, which
+is remembered as a fallback: without the client or a key, however, neither
+rank nor matches arrive.
 
-## 2. Chiave API
+## 2. API key
 
-- La chiave non è mai inclusa nel frontend, nel repository, nei file di build,
-  nel database o nei log.
-- Viene letta, nell'ordine, da:
-  1. variabile d'ambiente di processo `RIOT_API_KEY`;
-  2. Gestione credenziali di Windows (servizio `com.tecca.codeoflegends`),
-     dove la salva **Impostazioni → Chiave API Riot**.
-- Il campo nell'interfaccia è in sola scrittura: la chiave non viene mai
-  rimandata alla webview.
-- Viene inviata solo come header `X-Riot-Token` agli host ufficiali
+- The key is never included in the frontend, the repository, build files, the
+  database or logs.
+- It is read, in this order, from:
+  1. the process environment variable `RIOT_API_KEY`;
+  2. the Windows Credential Manager (service `com.tecca.codeoflegends`),
+     where **Settings → Riot API key** stores it.
+- The field in the UI is write-only: the key is never sent back to the
+  webview.
+- It is sent only as the `X-Riot-Token` header to the official hosts
   `*.api.riotgames.com`.
-- Le chiavi di sviluppo scadono dopo 24 ore. Per distribuire l'app ad altri
-  serve una chiave **personale** o di **produzione**, approvata tramite il
-  Developer Portal.
+- Development keys expire after 24 hours. Regular use needs a **personal** or
+  **production** key, approved through the Developer Portal.
 
-## 3. Rate limit e richieste
+## 3. Rate limits and requests
 
-- Il limitatore è per routing value e usa i limiti della chiave di sviluppo
-  (20 richieste/s, 100 ogni 2 minuti) con un margine.
-- Sui `429` rispetta `Retry-After`; i `5xx` hanno un numero di tentativi
-  limitato.
-- Cache locale: profilo 60 min, rank 10 min, lista partite 3 min. Le partite
-  concluse si scaricano una sola volta.
-- Una sola sincronizzazione per giocatore alla volta.
-- Statistiche globali (opt-in): al massimo una richiesta ogni 2,5 s,
-  così resta circa metà del limite per le ricerche dei profili; classifica
-  aggiornata al massimo una volta al giorno, ogni giocatore riletto dopo
-  almeno 12 ore, ogni partita scaricata una sola volta; pausa automatica su
-  `429` (Retry-After), errori di rete e chiave scaduta. Si salvano solo i
-  campi necessari alle aggregazioni (niente nomi o Riot ID degli altri
-  giocatori) e solo le ultime 3 patch; eliminabili da Impostazioni.
-- Gli errori distinguono chiave non valida o scaduta, account inesistente,
-  limite raggiunto e problemi di rete, con messaggi chiari per l'utente.
+- The limiter works per routing value and uses the development key limits
+  (20 requests/s, 100 every 2 minutes) with a margin.
+- On `429` it respects `Retry-After`; `5xx` responses get a limited number of
+  retries.
+- Local cache: profile 60 min, rank 10 min, match list 3 min. Finished matches
+  are downloaded only once.
+- Only one sync per player at a time.
+- Champion statistics (opt-in): at most one request every 2.5 s, which leaves
+  about half of the limit for profile searches; ladder refreshed at most once a
+  day, each player re-read after at least 12 hours, each match and timeline
+  downloaded once; automatic pause on `429` (Retry-After), network errors and an
+  expired key, and while the in-game panel is loading. Only the fields needed
+  by the aggregations are stored (no names or Riot IDs of other players) and
+  only the last 3 patches; they can be deleted from Settings.
+- In-game panel: one lookup per game, at most about 9 requests per player
+  (account, summoner, league, match list, 5 match details); players with a
+  hidden name and bots are never looked up.
+- Errors distinguish an invalid or expired key, a missing account, a reached
+  limit and network problems, with clear messages for the user.
 
-## 4. Gioco e client
+## 4. Game and client
 
-| Vincolo | Stato | Verifica (release 0.10.0) |
+| Constraint | Status | Check (release 0.10.0) |
 | --- | --- | --- |
-| Nessuna lettura della memoria del processo | Rispettato | Nessuna API di processo o memoria nel codice; nessuna dipendenza `windows-sys`, `winapi` o `sysinfo` nel crate |
-| Nessuna injection, hook o debugger | Rispettato | Come sopra |
-| Nessuna modifica ai file del gioco o del client | Rispettato | Il percorso di League serve solo a **leggere** il `lockfile`; le scritture avvengono solo nella cartella dati dell'app |
-| Nessuna automazione o input sintetico | Rispettato | Nessun `SendInput` o simili; l'overlay ignora mouse e tastiera |
-| Overlay | Finestra Tauri separata, opzionale, trasparente, click-through | `live/window.rs`; capability `overlay` con soli eventi e log |
-| Dati in partita | I propri dati del client; per gli altri giocatori solo l'identità della tabella punteggi e il profilo pubblico Riot API (livello, rank ufficiale, ultime classificate), mai nomi nascosti o bot; build informativa del proprio campione. Niente timer, cooldown, oggetti o punteggi altrui, MMR propri o suggerimenti dinamici | `docs/LIVE_GAME.md` § 1 bis, test su scarto dei dati di partita altrui e nomi nascosti |
-| Statistiche | Analisi personale: solo dalle partite dell'utente, con numerosità e IC. Statistiche globali: calcolate solo dalle partite scaricate con la chiave dell'utente, con numerosità, patch, regione e fascia dichiarate; nessuna percentuale stimata o presa da siti terzi | `docs/MATCH_ANALYSIS.md`, `src-tauri/src/meta/` |
-| Pubblicità | Assente | — |
+| No reading of the game process memory | Respected | No process or memory APIs in the code; no `windows-sys`, `winapi` or `sysinfo` dependency in the crate |
+| No injection, hooks or debugger | Respected | As above |
+| No changes to game or client files | Respected | The League path is used only to **read** the `lockfile`; writes happen only in the app data folder |
+| No automation or synthetic input | Respected | No `SendInput` or similar; overlay and in-game panel ignore mouse and keyboard |
+| Overlay and in-game panel | Separate, optional, transparent, click-through Tauri windows | `live/window.rs`; capability `overlay` with events and log only |
+| In-game data | The user's own client data; for other players only the scoreboard identity and the public Riot API profile (level, official rank, recent ranked games), never hidden names or bots; informative build of the user's own champion. No timers, cooldowns, other players' items or scores, custom MMR or dynamic advice | `docs/LIVE_GAME.md` § 1a, tests on discarding other players' game data and hidden names |
+| Statistics | Personal analysis: only from the user's own matches, with sample size and CI. Champion statistics: computed only from matches downloaded with the user's key, with sample size, patch, region and tier stated; no estimated percentages and nothing taken from third-party sites | `docs/MATCH_ANALYSIS.md`, `src-tauri/src/meta/` |
+| Advertising | None | — |
 
-## 5. Distribuzione
+## 5. Distribution
 
-- Per le policy Riot, ogni prodotto distribuito pubblicamente va **registrato e
-  approvato** tramite il Riot Developer Portal. La release 0.10.0 è pensata per
-  uso personale e test: la registrazione resta a carico del titolare del
-  progetto.
-- La raccolta delle statistiche globali con una chiave di sviluppo è adatta
-  solo a prototipi e uso personale: per distribuirla ad altri utenti serve una
-  chiave di produzione approvata, con limiti e scopo dichiarati a Riot.
-- Nell'app e nella documentazione va riportata la dicitura legale Riot:
+- Under Riot policies, every publicly distributed product must be **registered
+  and approved** through the Riot Developer Portal. Release 0.10.0 is meant
+  for personal use and testing: registration is the project owner's
+  responsibility.
+- Collecting champion statistics with a development or personal key is only
+  suitable for prototypes and personal use: distributing it to other users
+  needs an approved production key, with limits and purpose declared to Riot.
+- The app and its documentation must show Riot's legal notice:
   *TECCA CODEOFLEGENDS isn't endorsed by Riot Games and doesn't reflect the
   views or opinions of Riot Games or anyone officially involved in producing or
   managing Riot Games properties. Riot Games, and all associated properties are
   trademarks or registered trademarks of Riot Games, Inc.*
 
-## 6. Come rifare la verifica
+## 6. How to repeat the checks
 
 ```powershell
-# Nessuna chiave reale nel repository e nella cronologia (solo le chiavi fittizie dei test)
+# No real key in the repository or its history (only the fake test keys)
 git log -p --all | Select-String -Pattern "RGAPI-[0-9a-fA-F]{8}-" | Select-Object -ExpandProperty Line -Unique
 
-# Nessuna API di processo, memoria o input nel backend
+# No process, memory or input APIs in the backend
 Select-String -Path src-tauri\src\*.rs, src-tauri\src\*\*.rs -Pattern "ReadProcessMemory|OpenProcess|SendInput|SetWindowsHookEx"
 
-# Permessi e CSP: verificati anche dal test cargo `release_tests`
+# Permissions and CSP: also checked by the cargo test `release_tests`
 cargo test --manifest-path src-tauri/Cargo.toml release_tests
 ```

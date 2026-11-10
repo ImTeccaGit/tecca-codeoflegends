@@ -1,243 +1,253 @@
 # Roadmap — Tecca CodeOfLegends
 
-La roadmap distingue esplicitamente ciò che è **verificato** da ciò che è
-**pianificato**. Nessuna fase può essere marcata completa senza compilazione,
-esecuzione e verifica del comportamento.
+The roadmap explicitly separates what is **verified** from what is
+**planned**. No phase can be marked complete without building, running and
+verifying its behavior.
 
-Legenda stato:
+Status legend:
 
-- **Completato** — implementato, eseguito e verificato.
-- **In corso** — parzialmente implementato, non ancora verificato end-to-end.
-- **Pianificato** — non implementato; al massimo esiste uno scaffold UI onesto.
+- **Completed** — implemented, run and verified.
+- **In progress** — partly implemented, not yet verified end to end.
+- **Planned** — not implemented; at most an honest UI scaffold exists.
 
 ---
 
-## Fase 1 — Fondamenta · Completato
+## Phase 1 — Foundations · Completed
 
-### Obiettivo
+### Goal
 
-Avere una base desktop solida, sicura e trasparente su cui costruire i moduli.
+A solid, secure and transparent desktop base to build the modules on.
 
-### Consegne
+### Deliverables
 
-- [x] Scaffold Tauri 2 + React + TypeScript strict + Vite + Tailwind 4.
-- [x] Design system scuro con palette ufficiale e token centralizzati.
-- [x] Shell desktop: sidebar permanente, top bar, drawer mobile.
-- [x] Command palette `Ctrl+K` con ricerca e navigazione da tastiera.
-- [x] Skip link, focus visibile, ruoli ARIA, rispetto di
-      `prefers-reduced-motion`.
-- [x] Registry moduli unico con stato e fase.
-- [x] Dashboard con dati reali: stato DB, schema, dimensione, conteggi,
-      impostazioni, activity log.
-- [x] Settings con persistenza reale su SQLite (regione, riduzione animazioni).
-- [x] Diagnostica: percorso DB copiabile, runtime, record locali.
-- [x] Rust: `AppError`, comandi tipizzati, validazione input.
-- [x] SQLite: schema v2, migrazioni append-only, WAL, foreign key, `STRICT`.
-- [x] Activity log locale con potatura a 200 record.
-- [x] Stati loading, empty, error, success espliciti.
-- [x] Anteprima browser consapevole dell'assenza del backend.
-- [x] Icone applicazione generate e bundle Tauri configurato.
-- [x] Documentazione: `AGENTS.md`, `README.md`, architettura, roadmap.
+- [x] Tauri 2 + React + strict TypeScript + Vite + Tailwind 4 scaffold.
+- [x] Dark design system with the official palette and centralized tokens.
+- [x] Desktop shell: permanent sidebar, top bar, mobile drawer.
+- [x] `Ctrl+K` command palette with search and keyboard navigation.
+- [x] Skip link, visible focus, ARIA roles, `prefers-reduced-motion` support.
+- [x] Single module registry with status and phase.
+- [x] Dashboard with real data: DB state, schema, size, counts, settings,
+      activity log.
+- [x] Settings truly persisted in SQLite (region, reduced motion).
+- [x] Diagnostics: copyable DB path, runtime, local records.
+- [x] Rust: `AppError`, typed commands, input validation.
+- [x] SQLite: schema v2, append-only migrations, WAL, foreign keys, `STRICT`.
+- [x] Local activity log pruned to 200 records.
+- [x] Explicit loading, empty, error and success states.
+- [x] Browser preview aware of the missing backend.
+- [x] Generated app icons and configured Tauri bundle.
+- [x] Documentation: `AGENTS.md`, `README.md`, architecture, roadmap.
 
-### Correzioni post-revisione (Fase 1)
+### Post-review fixes (Phase 1)
 
-- [x] Animazioni di Dialog e Tooltip ripristinate (`tw-animate-css`).
-- [x] Capability opener limitata ai domini in allowlist.
-- [x] Log tecnici locali ruotati (`tauri-plugin-log`), percorso in Impostazioni.
-- [x] Messaggi di errore per l'utente senza dettagli tecnici.
-- [x] App avviabile anche con database non apribile (errore esplicito).
-- [x] Colori di ombre e bagliori spostati in token di `index.css`.
-- [x] Testi fuorvianti corretti, un solo `<h1>` per pagina.
-- [x] Form Impostazioni senza `useEffect` di sincronizzazione.
+- [x] Dialog and Tooltip animations restored (`tw-animate-css`).
+- [x] Opener capability limited to allowlisted domains.
+- [x] Rotated local technical logs (`tauri-plugin-log`), path in Settings.
+- [x] User error messages without technical details.
+- [x] App starts even when the database cannot be opened (explicit error).
+- [x] Shadow and glow colors moved to `index.css` tokens.
+- [x] Misleading texts fixed, a single `<h1>` per page.
+- [x] Settings form without synchronization `useEffect`.
 
-### Dashboard competitiva (Fase 1)
+### Competitive dashboard (Phase 1)
 
-- [x] Card Win Rate, KDA, Rank, LP, Partite e stato Riot API.
-- [x] Grafico performance (Recharts, caricato in lazy), ultime partite,
-      campioni recenti, medie personali, ultima patch.
-- [x] Modalità DEMO: dataset dimostrativo etichettato, solo di sessione, mai
-      salvato. Senza DEMO i pannelli mostrano stati vuoti espliciti.
-- [x] Contratti Zod in `src/types/dashboard.ts` e calcoli puri in
-      `src/lib/match-stats.ts`, pronti per i dati Riot reali.
-- [x] Lint frontend con oxlint, test con Vitest e `cargo test`.
+- [x] Win rate, KDA, rank, LP, matches and Riot API status cards.
+- [x] Performance chart (Recharts, lazy-loaded), recent matches, recent
+      champions, personal averages, latest patch.
+- [x] DEMO mode: labelled demo dataset, session-only, never saved. Without DEMO
+      the panels show explicit empty states.
+- [x] Zod contracts in `src/types/dashboard.ts` and pure calculations in
+      `src/lib/match-stats.ts`, ready for real Riot data.
+- [x] Frontend lint with oxlint, tests with Vitest and `cargo test`.
 
-### Criteri di uscita verificati
+### Verified exit criteria
 
-- `npm run typecheck` senza errori.
-- `npm run build` senza errori.
-- `cargo check` senza errori.
-- `cargo clippy -D warnings` senza warning.
-- `cargo fmt --check` pulito.
-- Avvio dell'app desktop con creazione database e persistenza impostazioni.
+- `npm run typecheck` without errors.
+- `npm run build` without errors.
+- `cargo check` without errors.
+- `cargo clippy -D warnings` without warnings.
+- `cargo fmt --check` clean.
+- Desktop app starts, creates the database and persists settings.
 
-### Fuori scope in questa fase
+### Out of scope in this phase
 
-- Qualsiasi chiamata Riot.
-- Qualsiasi lettura del client di gioco.
+- Any Riot call.
+- Any read of the game client.
 - Overlay.
-- Dati campioni, partite, build o rune.
+- Champion, match, build or rune data.
 
 ---
 
-## Fase 2 — Champions Database · Completato
+## Phase 2 — Champions Database · Completed
 
-- [x] Client backend Data Dragon con timeout e retry controllati.
-- [x] Catalogo SQLite versionato per patch, con fonte, URL e timestamp di import.
-- [x] Import di campioni, abilità (passiva + Q/W/E/R), skin, oggetti e rune.
-- [x] Controllo automatico ogni 6 ore + controllo manuale; registro dei controlli.
-- [x] Dati storici immutabili (trigger) e verifica di integrità prima del commit.
-- [x] Endpoint elenco e dettaglio campione.
-- [x] UI elenco: ricerca, filtro per classe Data Dragon, ordinamento, stato fonte.
-- [x] UI dettaglio: storia, abilità, statistiche, valutazioni, skin, patch.
-- [x] Test con fixture fittizie + test live su Data Dragon reale (patch 16.22.1:
-      173 campioni, 865 abilità, 9.268 voci skin, 863 oggetti, 62 rune,
-      2.141 immagini verificate).
-- [x] Preferiti persistiti (stella su card e scheda, filtro "Preferiti").
-- [x] Filtro per corsia con icone originali, su corsie assegnate dall'utente
-      (Data Dragon non pubblica le corsie).
-- [ ] Corsie proposte automaticamente dalle partite reali (richiede Fase 5).
-- [ ] Cache locale delle immagini per l'uso completamente offline.
+- [x] Data Dragon backend client with controlled timeouts and retries.
+- [x] SQLite catalog versioned per patch, with source, URL and import timestamp.
+- [x] Import of champions, abilities (passive + Q/W/E/R), skins, items and runes.
+- [x] Automatic check every 6 hours + manual check; log of the checks.
+- [x] Immutable historical data (triggers) and integrity check before commit.
+- [x] Champion list and detail endpoints.
+- [x] List UI: search, Data Dragon class filter, sorting, source state.
+- [x] Detail UI: lore, abilities, stats, ratings, skins, patch.
+- [x] Tests with fictional fixtures + live test on real Data Dragon (patch
+      16.22.1: 173 champions, 865 abilities, 9,268 skin entries, 863 items,
+      62 runes, 2,141 images checked).
+- [x] Persisted favorites (star on card and detail, "Favorites" filter).
+- [x] Lane filter with original icons, based on the lanes champions are really
+      played in (collected and personal matches), no longer chosen by the user.
+- [ ] Local image cache for fully offline use.
 
-**Criterio di uscita:** i dati mostrati provengono da Data Dragon e riportano
-fonte, versione e timestamp.
-
----
-
-## Fase 3 — Rune & Build Builder · Pianificato
-
-**Prerequisiti:** catalogo campioni reale e fonti statiche Riot.
-
-- [ ] Modello dati per alberi runici, frammenti e vincoli di combinazione.
-- [ ] CRUD pagine runiche su SQLite.
-- [ ] Editor accessibile con validazione delle combinazioni.
-- [ ] Catalogo item reale con patch dichiarata.
-- [ ] Build con item core, situazionali, ordine abilità e note.
-- [ ] Duplicazione, rinomina, eliminazione con conferma.
-- [ ] Export/import locale in formato versionato.
-
-**Criterio di uscita:** creare, modificare, riavviare l'app e ritrovare i dati
-identici; nessun suggerimento presentato come statistica.
+**Exit criterion:** the data shown comes from Data Dragon and states source,
+version and timestamp.
 
 ---
 
-## Fase 4 — Jungle & Farming · Completato
+## Phase 3 — Rune & Build Builder · Planned
 
-- [x] Mappa schematica originale: Blue/Red Side, 12 campi, Scuttle, fosse epiche.
-- [x] Percorsi modello per lato (Full Clear ×2, 5 Camp, 3 Camp, Invasione
-      simulata), dichiarati come sola sequenza, senza tempi ufficiali.
-- [x] Percorsi personalizzati in SQLite (creazione dalla mappa o da un
-      modello, riordino, note, eliminazione con conferma).
-- [x] Cronometro di allenamento con tempo per campo, pausa e annulla.
-- [x] Storico, record personale, media, miglioramento, grafico, confronto.
-- [x] Schede dei campioni jungle (corsie assegnate dall'utente).
-- [x] Mostri e obiettivi senza tempi di spawn inventati; nessuna funzione live.
-- [ ] Note di matchup jungle e scenari di allenamento guidati.
+**Prerequisites:** real champion catalog and static Riot sources.
 
-**Criterio di uscita rispettato:** nessun percorso o tempo è presentato come
-dato ufficiale; i tempi sono solo quelli registrati dall'utente.
+- [ ] Data model for rune trees, shards and combination constraints.
+- [ ] Rune page CRUD on SQLite.
+- [ ] Accessible editor with combination validation.
+- [ ] Real item catalog with declared patch.
+- [ ] Builds with core and situational items, skill order and notes.
+- [ ] Duplicate, rename, delete with confirmation.
+- [ ] Local export/import in a versioned format.
 
----
-
-## Fase 5 — Player Profiles & Match History · Implementato, verifica live in sospeso
-
-- [x] Chiave solo lato Rust: `RIOT_API_KEY` o Gestione credenziali di Windows.
-- [x] Client Riot con routing regionale, rate limiting, retry su 429/5xx, cache.
-- [x] Ricerca account per Riot ID e regione (incluse SEA: sg2, tw2, vn2).
-- [x] Profilo con rank Solo/Flex, statistiche, campioni e orari di aggiornamento.
-- [x] Sincronizzazione partite con deduplica per `match_id`.
-- [x] Cronologia con oggetti, rune e filtri per coda.
-- [x] Stati: chiave mancante, account inesistente, rate limit, errore con dati
-      precedenti conservati.
-- [x] Dashboard alimentata dal profilo principale (DEMO mai mescolato).
-- [x] 21 test Rust con risposte simulate.
-- [ ] Verifica end-to-end con una chiave reale nell'app desktop.
-- [ ] Dettaglio partita con tutti i partecipanti (dati già salvati).
-
-**Criterio di uscita:** ogni dato remoto mostra fonte e ora di recupero; nessun
-profilo o partita è inventato.
+**Exit criterion:** create, edit, restart the app and find identical data; no
+suggestion presented as a statistic.
 
 ---
 
-## Statistiche globali dei campioni · Implementate, verifica live in sospeso
+## Phase 4 — Jungle & Farming · Completed
 
-- [x] Raccolta opt-in con la chiave dell'utente: league-v4 → match-v5 (Solo/Duo).
-- [x] Rune più usate (pagina completa con frammenti), rune chiave, incantesimi,
-      stivali e oggetti completi per campione, patch e ruolo.
-- [x] Popolarità, vittorie, ban e avversari di corsia con numerosità dichiarata.
-- [x] Pagina campione con ruoli, filtro patch e pannelli in stile scheda.
-- [x] Ordine delle abilità, oggetti iniziali e build centrale (timeline match-v5).
-- [x] Corsie reali dei campioni (lista e scheda) al posto di quelle scelte dall'utente.
-- [x] Statistiche dalle partite personali quando mancano quelle raccolte (etichettate).
-- [ ] Verifica con una chiave reale e un volume di partite significativo.
+- [x] Original schematic map: Blue/Red Side, 12 camps, Scuttle, epic pits.
+- [x] Template routes per side (Full Clear ×2, 5 Camp, 3 Camp, simulated
+      invade), declared as sequences only, without official times.
+- [x] Custom routes in SQLite (created from the map or a template, reorder,
+      notes, deletion with confirmation).
+- [x] Training stopwatch with per-camp time, pause and undo.
+- [x] History, personal best, average, improvement, chart, comparison.
+- [x] Jungle champion cards.
+- [x] Monsters and objectives without invented spawn times; no live feature.
+- [ ] Jungle matchup notes and guided training scenarios.
 
----
-
-## Fase 6 — Match Analysis & Matchups · Implementata
-
-Dettagli e limiti: [MATCH_ANALYSIS.md](MATCH_ANALYSIS.md).
-
-- [x] Metriche post-partita documentate e testate (KDA, CS/min, oro/min, KP, danni, visione).
-- [x] Grafici Recharts solo su serie reali e verificabili.
-- [x] Statistiche con fonte, patch, numerosità, periodo e IC 95% dichiarati.
-- [x] Matchup, counter, sinergie, rune e oggetti calcolati dalle partite dell'utente.
-- [x] Analisi rigenerabile offline dai dati in cache.
-- [ ] Timeline partita (match-v5 timeline): ordine di acquisto, oro nel tempo.
-- [ ] Note di matchup personali (tabella `matchup_notes` già presente).
-- [ ] Filtro per fascia classificata: non possibile con match-v5 (rank storico assente).
-- [ ] Verifica con partite reali (richiede la chiave Riot dell'utente).
-
-**Criterio di uscita:** nessun grafico o win rate dimostrativo viene mostrato
-come dato della partita dell'utente.
+**Exit criterion met:** no route or time is presented as official data; the
+only times are those recorded by the user.
 
 ---
 
-## Fase 7 — Live Game & Overlay · Implementata
+## Phase 5 — Player Profiles & Match History · Implemented, live check pending
 
-Policy Riot verificate: vedi [LIVE_GAME.md](LIVE_GAME.md).
+- [x] Key on the Rust side only: `RIOT_API_KEY` or the Windows Credential
+      Manager.
+- [x] Riot client with regional routing, rate limiting, retries on 429/5xx,
+      cache.
+- [x] Account search by Riot ID and region (including SEA: sg2, tw2, vn2).
+- [x] Profile with Solo/Flex rank, statistics, champions and update times.
+- [x] Match sync with deduplication by `match_id`.
+- [x] History with items, runes and queue filters.
+- [x] States: missing key, unknown account, rate limit, error with previous
+      data kept.
+- [x] Dashboard fed by the main profile (DEMO never mixed in).
+- [x] 21 Rust tests with simulated responses.
+- [ ] End-to-end check with a real key in the desktop app.
+- [ ] Match detail with all participants (data already stored).
 
-- [x] Rilevamento partita tramite Live Client Data API locale in sola lettura.
-- [x] Nessun hook, injection, pattern scanning o memory reading.
-- [x] Finestra overlay Tauri separata, trasparente e non interattiva sul gioco.
-- [x] Kill switch immediato e consenso esplicito (disattivato di default).
-- [x] Solo i dati del giocatore locale; i dati degli altri scartati nel backend.
-- [ ] ~~Suggerimenti contestuali in partita~~: esclusi, le policy vietano app
-      che dettano le decisioni del giocatore.
-- [x] Nessuna automazione di gameplay o manipolazione input.
-- [ ] Verifica con una partita reale (dipende dall'utente).
-
-**Criterio di uscita:** l'app non modifica, automatizza o ispeziona la memoria
-del gioco in alcun modo.
-
----
-
-## Fase 8 — Rifinitura e distribuzione · Release 0.10.0 (beta)
-
-- [x] Test automatici frontend (Vitest) e backend (cargo test), con guardie
-      di release (versione unica, CSP, permessi).
-- [x] Code splitting dei grafici (Recharts lazy).
-- [x] Percorso di aggiornamento sicuro: backup verificato prima di ogni
-      migrazione, rifiuto dei database più recenti, `allowDowngrades: false`.
-- [x] Backup manuali del database da Impostazioni.
-- [x] Installer NSIS per utente (italiano e inglese).
-- [ ] Firma Authenticode dell'installer (serve un certificato).
-- [x] Log locali ruotati e diagnosticabili.
-- [x] Documentazione utente: installazione, avvio, aggiornamento, API, build
-      (README, [DATABASE.md](DATABASE.md), [RIOT_COMPLIANCE.md](RIOT_COMPLIANCE.md)).
-- [ ] Aggiornamento in-app firmato (`tauri-plugin-updater`), solo con firma e
-      conferma dell'utente: architettura in ARCHITECTURE.md § 9.
-- [ ] Registrazione del prodotto sul Riot Developer Portal prima della
-      distribuzione pubblica.
-- [ ] File `LICENSE` (scelta del titolare).
+**Exit criterion:** every remote value shows source and fetch time; no profile
+or match is invented.
 
 ---
 
-## Non-obiettivi permanenti
+## Champion statistics · Implemented, live check pending
 
-Questi punti non entreranno mai nel prodotto, indipendentemente dalla fase:
+- [x] Opt-in collection with the user's key: league-v4 → match-v5 (Solo/Duo).
+- [x] Most used runes (full page with shards), keystones, summoner spells,
+      boots and completed items per champion, patch and role.
+- [x] Popularity, wins, bans and lane opponents with stated sample size.
+- [x] Champion page with roles, patch filter and card-style panels.
+- [x] Skill order, starting items and core build (match-v5 timeline).
+- [x] Real champion lanes (list and detail) instead of user-chosen ones.
+- [x] Statistics from the user's own matches when collected ones are missing
+      (labelled).
+- [ ] Check with a real key and a meaningful volume of matches.
 
-- automazione di gameplay, clickbot, script di abilità, auto-accept;
-- memory reading, DLL injection, hook, pattern scanning;
-- modifica dei file di gioco o del client;
-- API key Riot nel frontend, nel repository o nei log;
-- telemetria remota non dichiarata;
-- dati inventati presentati come reali.
+---
+
+## Phase 6 — Match Analysis & Matchups · Implemented
+
+Details and limits: [MATCH_ANALYSIS.md](MATCH_ANALYSIS.md).
+
+- [x] Documented and tested post-game metrics (KDA, CS/min, gold/min, KP,
+      damage, vision).
+- [x] Recharts charts only on real, verifiable series.
+- [x] Statistics with stated source, patch, sample size, period and 95% CI.
+- [x] Matchups, counters, synergies, runes and items computed from the user's
+      matches.
+- [x] Analysis rebuildable offline from cached data.
+- [ ] Match timeline in the personal analysis: purchase order, gold over time.
+- [ ] Personal matchup notes (table `matchup_notes` already present).
+- [ ] Ranked tier filter: not possible with match-v5 (no historical rank).
+- [ ] Check with real matches (needs the user's Riot key).
+
+**Exit criterion:** no demo chart or win rate is shown as the user's match
+data.
+
+---
+
+## Phase 7 — Live Game & Overlay · Implemented
+
+Riot policies checked: see [LIVE_GAME.md](LIVE_GAME.md).
+
+- [x] Game detection through the local Live Client Data API, read-only.
+- [x] No hooks, injection, pattern scanning or memory reading.
+- [x] Separate Tauri overlay window, transparent and non-interactive over the
+      game.
+- [x] Immediate kill switch and explicit consent (off by default).
+- [x] For other players, only the scoreboard identity; their game data is
+      discarded in the backend.
+- [x] In-game panel (approved by the user on 2026-11-10): official rank,
+      level and recent ranked games of the other players, informative build of
+      the user's own champion; opens by itself, `Home` to hide or show it.
+- [ ] ~~Contextual in-game advice~~: excluded, policies forbid apps that
+      dictate the player's decisions.
+- [x] No gameplay automation or input manipulation.
+- [ ] Check with a real game (depends on the user).
+
+**Exit criterion:** the app does not modify, automate or inspect the game's
+memory in any way.
+
+---
+
+## Phase 8 — Polish and distribution · Release 0.10.0 (beta)
+
+- [x] Automated frontend (Vitest) and backend (cargo test) tests, with release
+      guards (single version, CSP, permissions).
+- [x] Chart code splitting (lazy Recharts).
+- [x] Safe update path: verified backup before every migration, newer
+      databases refused, `allowDowngrades: false`.
+- [x] Manual database backups from Settings.
+- [x] Per-user NSIS installer (Italian and English).
+- [ ] Authenticode signature of the installer (needs a certificate).
+- [x] Rotated, diagnosable local logs.
+- [x] User documentation: installation, startup, update, API, build
+      (README, [USER_GUIDE.md](USER_GUIDE.md), [DATABASE.md](DATABASE.md),
+      [RIOT_COMPLIANCE.md](RIOT_COMPLIANCE.md)).
+- [x] Public source repository for the Riot personal key request.
+- [ ] Signed in-app update (`tauri-plugin-updater`), only with a signature and
+      user confirmation: architecture in ARCHITECTURE.md § 9.
+- [ ] Product registration on the Riot Developer Portal before public
+      distribution.
+- [ ] `LICENSE` file (owner's choice; `package.json` declares MIT).
+
+---
+
+## Permanent non-goals
+
+These will never be part of the product, whatever the phase:
+
+- gameplay automation, clickbots, ability scripts, auto-accept;
+- memory reading, DLL injection, hooks, pattern scanning;
+- changes to game or client files;
+- Riot API keys in the frontend, the repository or logs;
+- undeclared remote telemetry;
+- invented data presented as real.
