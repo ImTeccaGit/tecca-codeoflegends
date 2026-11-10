@@ -43,6 +43,36 @@ The panel is informative only. It is a transparent, click-through window that
 never receives input and never interacts with the game. The `Home` key hides
 or shows it.
 
+## Screenshots
+
+The app interface is in Italian. No personal data is shown: no Riot IDs of
+the developer or of other real players.
+
+**Dashboard** — shown here in the app's built-in DEMO mode: every value with
+the `DEMO` label comes from a sample dataset that is never saved.
+
+![Dashboard in DEMO mode](docs/images/dashboard.png)
+
+**Champions** — Data Dragon catalog with search, class filter and the lanes
+each champion is really played in.
+
+![Champion list](docs/images/champions.png)
+
+**Champion page** — lanes, pick/win/ban rates, skill order, builds, lane
+opponents, summoner spells and the most used rune page. Here the numbers come
+from the developer's own saved matches (labelled "Dati personali"), because
+the opt-in collection had not run yet; every value shows its sample size.
+
+![Champion page](docs/images/champion-page.png)
+
+**In-game panel** — separate click-through window over the game, toggled with
+`Home`: official rank, level and recent ranked games of each player, plus the
+build of the user's own champion. **Players here are fictional sample data**
+(`SamplePlayer…#DEMO`); a player with a hidden name and a bot show that they
+are never looked up.
+
+![In-game panel with sample players](docs/images/in-game-panel.png)
+
 ## What it does NOT do
 
 - No memory reading, injection, hooks or modification of game or client files.
